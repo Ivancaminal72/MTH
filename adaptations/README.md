@@ -1,2 +1,0 @@
-# MTH
-Master Thesis

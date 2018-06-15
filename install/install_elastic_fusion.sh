@@ -1,6 +1,7 @@
+#!/bin/bash
 # INSTALL --> bash install_elastic_fusion.sh 2> log_elastic_fusion_build.txt
 # change to your workspace folder
-cd ~/methods
+cd ~/workspace
 
 # load modules
 module load openni2/master \
@@ -9,10 +10,9 @@ module load openni2/master \
 
 # download ElasticFusion
 git clone --recursive https://github.com/Ivancaminal72/ElasticFusion.git
-mv ElasticFusion elastic_fusion
 
 # download dependencies
-cd elastic_fusion
+cd ElasticFusion
 mkdir deps && cd deps/
 git clone https://github.com/stevenlovegrove/Pangolin.git
 

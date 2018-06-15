@@ -1,5 +1,6 @@
+#!/bin/bash
 # change to your workspace folder
-cd ~/methods
+cd ~/workspace
 
 # load modules
 module load openni2/master \
@@ -13,7 +14,7 @@ module load openni2/master \
             eigen/3.2.8
 
 # download Kintinuous  (will create a "Kintinuous" folder)
-git clone --recursive https://github.com/mp3guy/Kintinuous.git
+git clone --recursive https://github.com/Ivancaminal72/Kintinuous
 
 # download dependencies
 cd Kintinuous
@@ -27,7 +28,7 @@ cmake ..
 srun --mem 20G -c12 make -j12
 
 # build Kintinuous
-cd ~/methods/Kintinuous/src/
+cd ../../../src/
 mkdir build && cd build
 cmake ../ -DCMAKE_CXX_FLAGS="-D HAVE_EIGEN"
 srun --mem 20G -c12 make -j12

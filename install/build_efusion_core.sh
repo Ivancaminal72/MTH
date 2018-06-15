@@ -1,5 +1,5 @@
 #!bin/bash
-cd ~/methods/elastic_fusion/Core/
+cd ~/workspace/ElasticFusion/Core/
 rm -rf build/
 mkdir build && cd build
 cmake ../src -DCMAKE_CXX_FLAGS="-D HAVE_EIGEN"
