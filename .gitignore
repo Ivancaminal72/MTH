@@ -1,3 +1,8 @@
-elastic_fusion/
+ElasticFusion/
 Kintinuous/
 world3d-ros/
+adapt/KITTY/_kitti-pcl/
+
+
+**/build/
+**/deps/
