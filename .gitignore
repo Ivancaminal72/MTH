@@ -6,3 +6,4 @@ adapt/KITTY/_kitti-pcl/
 
 **/build/
 **/deps/
+**/*.user
