@@ -13,6 +13,8 @@ using namespace std;
 namespace bf = boost::filesystem;
 namespace ei = Eigen;
 
+typedef ei::Matrix<float, 3, 4> Matrix34f;
+
 static struct option long_opt[] = {
     {"range",           required_argument,      0,   'r'    },
     {"downsampling",    required_argument,      0,   'd'    },
@@ -150,9 +152,7 @@ bool hasFiles(bf::path p, string ext="")
 
 int main(int argc, char **argv)
 {
-    if (argc == 1) parse_error();
-
-    bf::path inPath, dataPath, outPath, lidarPath, cameraPath;
+    bf::path inPath, outPath;
     string data_folder = "sequences", lidar_folder = "velodyne", camera_folder = "image_2", sequence;
     float downsampling, range;
 
@@ -160,8 +160,7 @@ int main(int argc, char **argv)
     bool mandatory;
     int c, longindex=0;
     const char *short_opt = "r:d:i:s:o:h";
-    char f[] = { 'r', 'd', 'i', 's', 'o'};
-    std::vector<int> flags(&f[0], &f[0]+sizeof(f));
+    std::vector<int> flags={ 'r', 'd', 'i', 's', 'o'};
     ostringstream msg;
     
     while ((c = getopt_long(argc, argv, short_opt, long_opt, &longindex)) != -1)
@@ -252,9 +251,11 @@ int main(int argc, char **argv)
     /*****************************Program*****************************/
 
     //Set up paths
-    dataPath = inPath; dataPath /= data_folder;
-    lidarPath = dataPath; lidarPath /= sequence; lidarPath /= lidar_folder;
-    cameraPath = dataPath; cameraPath /= sequence; cameraPath /= camera_folder;
+    bf::path dataPath = inPath.native()+"/"+data_folder;
+    bf::path lidarPath = dataPath.native()+"/"+sequence+"/"+lidar_folder;
+    bf::path cameraPath = dataPath.native()+"/"+sequence+"/"+camera_folder;
+    bf::path calibPath = dataPath.native()+"/"+sequence+"/calib.txt";
+    bf::path timesPath = dataPath.native()+"/"+sequence+"/times.txt";
     
     if(!verifyDir(dataPath) or !hasFiles(dataPath,"")) parse_error();
     if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".bin")) parse_error();
@@ -291,9 +292,10 @@ int main(int argc, char **argv)
     //vector<ei::Matrix3Xf> seqImgs(binPaths.size());
     streampos begin,end;
     int numPts, i;
-    for(it = binPaths.begin(); it != binPaths.end(); it++){
+    for(it = binPaths.begin(); it != binPaths.end(); it++)
+    {
         ifstream inlid((*it).c_str(), ios::binary);
-        if(!inlid.good()) parse_error("Could not read file: "+(*it).native()+"\n");
+        if(!inlid.good()) parse_error("Error reading file: "+(*it).native()+"\n");
         //compute size of file
         begin = inlid.tellg();
         inlid.seekg (0, ios::end);
@@ -302,7 +304,9 @@ int main(int argc, char **argv)
         numPts = (end-begin)/(4*sizeof(float));
         pts = ei::Matrix3Xf::Zero(3, numPts);
         vector<float> I(numPts);
-        for (i=0; inlid.good() && i<numPts; i++) {
+        for (i=0; i<numPts; i++)
+        {
+                if(!inlid.good()) parse_error("Error reading file: "+(*it).native()+"\n");
                 inlid.read((char *) &X, sizeof(float));
                 inlid.read((char *) &Y, sizeof(float));
                 inlid.read((char *) &Z, sizeof(float));
@@ -312,10 +316,38 @@ int main(int argc, char **argv)
         seqPts.push_back(pts);
         seqI.push_back(I);
         inlid.close();
-        cout<<distance(binPaths.begin(),it)+1<<"/"<<binPaths.size()<<endl;
+        cout<<"Loading lidar "<<distance(binPaths.begin(),it)+1<<"/"<<binPaths.size()<<endl;
     }
 
-    //Load calibration files
+    //Load calibration file
+    ifstream incalib(calibPath.c_str());
+    if(!incalib.good()) parse_error("Error reading file: "+(*it).native()+"\n");
+    string l, word;
+    istringstream line;
+    Matrix34f P[4], Tr;
+    while(getline(incalib, l))
+    {
+        line.str(l);
+        line.clear();
+        line>>word;
+        if(word[0]=='P')
+        {
+            int cam = word[1] - '0';
+            for(int i=0; line.good(); i++)
+            {
+                line>>word;
+                P[cam](i/4, i%4) = stof(word);
+            }
+        }
+        else
+        {
+            for(int i=0; line.good(); i++)
+            {
+                line>>word;
+                Tr(i/4, i%4) = stof(word);
+            }
+        }
+    }
 
     //compute x,y and recenter top-left
     //D,I
