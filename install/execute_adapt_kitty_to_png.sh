@@ -11,9 +11,9 @@ module load eigen/3.2.8 \
 #execute
 cd /imatge/icaminal/workspace/adapt/KITTY/kitty_to_png/build
 pwd
-srun --mem=4GB -c4 ./kitty_to_png \
+srun --mem=8GB -c4 ./kitty_to_png \
 -r 120 \
 -d 4 \
--l /imatge/icaminal/projects/world3d/2018-slam/dataset/lidar_sequences/00/velodyne \
--s /imatge/icaminal/projects/world3d/2018-slam/dataset/generated/00/ \
--i /imatge/icaminal/projects/world3d/2018-slam/dataset/color_sequences/00/image_2
+-i /imatge/icaminal/projects/world3d/2018-slam/dataset/ \
+-s 22 \
+-o /imatge/icaminal/projects/world3d/2018-slam/dataset/generated/
