@@ -4,16 +4,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>
-//#include <opencv2/opencv.hpp>
-#include <Eigen/Core>
+#include <opencv2/opencv.hpp>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Geometry>
 #include <boost/filesystem.hpp>
 #include <getopt.h>
 
 using namespace std;
+using namespace cv;
 namespace bf = boost::filesystem;
 namespace ei = Eigen;
 
 typedef ei::Matrix<float, 3, 4> Matrix34f;
+typedef ei::Matrix<unsigned short, 1, ei::Dynamic> MatrixX1s;
+
 
 static struct option long_opt[] = {
     {"range",           required_argument,      0,   'r'    },
@@ -150,6 +154,25 @@ bool hasFiles(bf::path p, string ext="")
     }
 }
 
+vector<boost::filesystem::path> getFilePaths(bf::path directory, string filter="")
+{
+    vector<bf::path> paths;
+    copy(bf::directory_iterator(directory), bf::directory_iterator(), back_inserter(paths));
+    sort(paths.begin(), paths.end());
+    vector<bf::path>::iterator it = paths.begin();
+    //filter by extension
+    if(!filter.empty())
+    {
+        while(it != paths.end())
+        {
+            if((*it).native().find(filter) == string::npos) paths.erase(it);
+            else it++;
+        }
+    }
+
+    return paths;
+}
+
 int main(int argc, char **argv)
 {
     bf::path inPath, outPath;
@@ -205,7 +228,7 @@ int main(int argc, char **argv)
             printf("Usage: %s mandatory [optional]\n", argv[0]);
             printf("\nMandatory args:\n");
             printf(" -r, --range        aproximate maximum lidar range\n");
-            printf(" -d, --downsampling image downsampling factor\n");
+            printf(" -d, --downsampling image downsampling factor [1,max]\n");
             printf(" -i, --input        kitty dataset directory\n");
             printf(" -s, --sequence     number of the sequence to convert\n");
             printf(" -o, --output       directory to save generated PNG files\n");
@@ -251,77 +274,69 @@ int main(int argc, char **argv)
     /*****************************Program*****************************/
 
     //Set up paths
-    bf::path dataPath = inPath.native()+"/"+data_folder;
-    bf::path lidarPath = dataPath.native()+"/"+sequence+"/"+lidar_folder;
-    bf::path cameraPath = dataPath.native()+"/"+sequence+"/"+camera_folder;
-    bf::path calibPath = dataPath.native()+"/"+sequence+"/calib.txt";
-    bf::path timesPath = dataPath.native()+"/"+sequence+"/times.txt";
+    bf::path dataPath = inPath.native()+data_folder+"/";
+    bf::path lidarPath = dataPath.native()+sequence+"/"+lidar_folder;
+    bf::path cameraPath = dataPath.native()+sequence+"/"+camera_folder;
+    bf::path calibPath = dataPath.native()+sequence+"/calib.txt";
+    bf::path timesPath = dataPath.native()+sequence+"/times.txt";
     
     if(!verifyDir(dataPath) or !hasFiles(dataPath,"")) parse_error();
     if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".bin")) parse_error();
     if(!verifyDir(cameraPath) or !hasFiles(cameraPath,".png")) parse_error();
     
     if(!verifyDir(outPath)) parse_error("Error creating save path\n");
-    bf::path outImage = outPath.native()+sequence+camera_folder;
-    bf::path outLidar = outPath.native()+sequence+lidar_folder;
+    bf::path outImage = outPath.native()+sequence+"/"+camera_folder+"/";
+    bf::path outLidar = outPath.native()+sequence+"/"+lidar_folder+"/";
     if(!resetDir(outImage)) exit(1);
     if(!resetDir(outLidar)) exit(1);
 
-    ushort depthScale = round(pow(2,16)/range); //calculate depth sampling per meter
+    float depthScale = pow(2,16)/range; //calculate depth sampling per meter
     printf("Scale %u   calculated depth scale (values/meter)\n", depthScale);
     printf("Precision   %f   meters\n", 1.0/depthScale);
 
 
-    //load pointcloud paths of the sequence
-    vector<bf::path> binPaths;
-    copy(bf::directory_iterator(lidarPath), bf::directory_iterator(), back_inserter(binPaths));
-    sort(binPaths.begin(), binPaths.end());
-    vector<bf::path>::iterator it = binPaths.begin();
-    //filter non binary files
-    while(it != binPaths.end())
-    {
-        if((*it).native().find(".bin") == string::npos) binPaths.erase(it);
-        else it++;
-    }
+    //load data paths
+    vector<bf::path> binPaths = getFilePaths(lidarPath, ".bin");
+    vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
 
     //for every pointcloud get XYZI values
     float X,Y,Z;
     ei::Matrix3Xf pts;
     vector<ei::Matrix3Xf> seqPts(binPaths.size());
     vector<vector<float> > seqI(binPaths.size());
-    //vector<ei::Matrix3Xf> seqImgs(binPaths.size());
     streampos begin,end;
     int numPts, i;
-    for(it = binPaths.begin(); it != binPaths.end(); it++)
+    vector<bf::path>::iterator itBin = binPaths.begin();
+    for(; itBin != binPaths.end(); itBin++)
     {
-        ifstream inlid((*it).c_str(), ios::binary);
-        if(!inlid.good()) parse_error("Error reading file: "+(*it).native()+"\n");
+        ifstream inLid((*itBin).c_str(), ios::binary);
+        if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
         //compute size of file
-        begin = inlid.tellg();
-        inlid.seekg (0, ios::end);
-        end = inlid.tellg();
-        inlid.seekg(0, ios::beg);
+        begin = inLid.tellg();
+        inLid.seekg (0, ios::end);
+        end = inLid.tellg();
+        inLid.seekg(0, ios::beg);
         numPts = (end-begin)/(4*sizeof(float));
         pts = ei::Matrix3Xf::Zero(3, numPts);
         vector<float> I(numPts);
         for (i=0; i<numPts; i++)
         {
-                if(!inlid.good()) parse_error("Error reading file: "+(*it).native()+"\n");
-                inlid.read((char *) &X, sizeof(float));
-                inlid.read((char *) &Y, sizeof(float));
-                inlid.read((char *) &Z, sizeof(float));
-                inlid.read((char *) &I.at(i), sizeof(float));
+                if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
+                inLid.read((char *) &X, sizeof(float));
+                inLid.read((char *) &Y, sizeof(float));
+                inLid.read((char *) &Z, sizeof(float));
+                inLid.read((char *) &I.at(i), sizeof(float));
                 pts.col(i) << X, Y, Z;
         }
         seqPts.push_back(pts);
         seqI.push_back(I);
-        inlid.close();
-        cout<<"Loading lidar "<<distance(binPaths.begin(),it)+1<<"/"<<binPaths.size()<<endl;
+        inLid.close();
+        cout<<"Loading lidar "<<distance(binPaths.begin(),itBin)+1<<"/"<<binPaths.size()<<endl;
     }
 
     //Load calibration file
     ifstream incalib(calibPath.c_str());
-    if(!incalib.good()) parse_error("Error reading file: "+(*it).native()+"\n");
+    if(!incalib.good()) parse_error("Error reading file: "+calibPath.native()+"\n");
     string l, word;
     istringstream line;
     Matrix34f P[4], Tr;
@@ -349,22 +364,74 @@ int main(int argc, char **argv)
         }
     }
 
-    //compute x,y and recenter top-left
-    //D,I
-    //Build ordered pointcloud
-         //Initialize pointcloud to zero
-         //Downsample image
-         //for each point:
-            //round(x,y / downsamling factor)
-            //Process D
-               //if D > max range --> D = max range
-               //D = D·sampling
-            //if D is non zero:
-                //save smaller D
-         //Interpolate regular?
-         //Save png color and png depth
-            //Matrix2opencv
+    //Load color images
+    cv::Mat color;
+    vector<cv::Mat> seqColor(pngPaths.size());
+    vector<bf::path>::iterator itPng = pngPaths.begin();
+    for(; itPng != pngPaths.end(); itPng++)
+    {
+        color = cv::imread((*itPng).c_str(), IMREAD_COLOR);
+        if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
+        seqColor.push_back(color.clone());
+//        cv::imshow( "Display window", color );
+//        cv::waitKey(0);
+        cout<<"Loading camera image "<<distance(pngPaths.begin(),itPng)+1<<"/"<<pngPaths.size()<<endl;
+    }
 
+    //Downsample color images
+    if(downsampling > 1)
+    {
+        float factor = 1/downsampling;
+        cv::resize(color.clone(), color, Size(), factor, factor);
+//        cv::imshow( "Display window", color );
+//        cv::waitKey(0);
+    }
+
+    //compute x,y -> //Todo: for every frame...
+//    pts=Tr*pts.colwise().homogeneous();
+//    pts=P[2]*pts.colwise().homogeneous();
+//    ei::Array3Xf ptsP2=pts.array();
+//    ptsP2.rowwise() /= ptsP2.row(2);
+
+    //recenter top-left -> //Todo: first observe max min values...
+
+    //compute scaled D -> //Todo: for every frame...
+    vector<MatrixX1s> seqD(binPaths.size());
+    ei::MatrixXf Dm;
+    MatrixX1s D;
+    vector<ei::Matrix3Xf>::iterator itPts = seqPts.begin();
+    for(; itPts != seqPts.end(); itPts++)
+    {
+        Dm=Tr.row(2)*(*itPts).colwise().homogeneous();
+        Dm = Dm*depthScale;
+        ei::Array<float,1,ei::Dynamic> Da = Dm.array();
+        Dm = Da.round().matrix();
+//        cout<<Dm<<endl;
+        for(int i=0; i<Dm.cols(); i++)
+        {
+            if(Dm(0,i)<0) Dm(0,i)=0;
+            if(Dm(0,i)>=2e16) Dm(0,i)=2e16-1;
+        }
+        D = Dm.cast<unsigned short>();
+//        cout<<D<<endl<<endl;
+        seqD.push_back(D);
+    }
+
+
+
+
+    //Initialize depth images to zero (equal size color image)
+    //for each point:
+        //round(x,y / downsamling factor)
+            //if D > max range --> D = max range
+            //D = D·sampling
+        //if D is non zero:
+            //save smaller D
+
+
+     //Interpolate regular?
+
+    //Save png color and png depth
 
 
     exit(0);
