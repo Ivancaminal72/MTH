@@ -302,8 +302,8 @@ int main(int argc, char **argv)
     //for every pointcloud get XYZI values
     float X,Y,Z;
     ei::Matrix3Xf pts;
-    vector<ei::Matrix3Xf> seqPts(binPaths.size());
-    vector<vector<float> > seqI(binPaths.size());
+    vector<ei::Matrix3Xf> seqPts;
+    vector<vector<float> > seqI;
     streampos begin,end;
     int numPts, i;
     vector<bf::path>::iterator itBin = binPaths.begin();
@@ -311,12 +311,11 @@ int main(int argc, char **argv)
     {
         ifstream inLid((*itBin).c_str(), ios::binary);
         if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
-        //compute size of file
         begin = inLid.tellg();
         inLid.seekg (0, ios::end);
         end = inLid.tellg();
         inLid.seekg(0, ios::beg);
-        numPts = (end-begin)/(4*sizeof(float));
+        numPts = (end-begin)/(4*sizeof(float)); //calculate number of points
         pts = ei::Matrix3Xf::Zero(3, numPts);
         vector<float> I(numPts);
         for (i=0; i<numPts; i++)
@@ -334,7 +333,7 @@ int main(int argc, char **argv)
         cout<<"Loading lidar "<<distance(binPaths.begin(),itBin)+1<<"/"<<binPaths.size()<<endl;
     }
 
-    //Load calibration file
+    //Load transformations from calib file
     ifstream incalib(calibPath.c_str());
     if(!incalib.good()) parse_error("Error reading file: "+calibPath.native()+"\n");
     string l, word;
@@ -366,73 +365,66 @@ int main(int argc, char **argv)
 
     //Load color images
     cv::Mat color;
-    vector<cv::Mat> seqColor(pngPaths.size());
+    vector<cv::Mat> seqColor;
     vector<bf::path>::iterator itPng = pngPaths.begin();
     for(; itPng != pngPaths.end(); itPng++)
     {
         color = cv::imread((*itPng).c_str(), IMREAD_COLOR);
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
+        if(downsampling > 1) //Downsample color images
+        {
+            float factor = 1/downsampling;
+            cv::resize(color.clone(), color, Size(), factor, factor, cv::INTER_LINEAR);
+        }
         seqColor.push_back(color.clone());
 //        cv::imshow( "Display window", color );
 //        cv::waitKey(0);
-        cout<<"Loading camera image "<<distance(pngPaths.begin(),itPng)+1<<"/"<<pngPaths.size()<<endl;
+        cout<<"Loading & downsampling camera image "<<distance(pngPaths.begin(),itPng)+1<<"/"<<pngPaths.size()<<endl;
     }
 
-    //Downsample color images
-    if(downsampling > 1)
-    {
-        float factor = 1/downsampling;
-        cv::resize(color.clone(), color, Size(), factor, factor);
-//        cv::imshow( "Display window", color );
-//        cv::waitKey(0);
-    }
-
-    //compute x,y -> //Todo: for every frame...
-//    pts=Tr*pts.colwise().homogeneous();
-//    pts=P[2]*pts.colwise().homogeneous();
-//    ei::Array3Xf ptsP2=pts.array();
-//    ptsP2.rowwise() /= ptsP2.row(2);
 
     //recenter top-left -> //Todo: first observe max min values...
 
-    //compute scaled D -> //Todo: for every frame...
-    vector<MatrixX1s> seqD(binPaths.size());
+    //compute x,y and scaled depth
+    cv::Mat D;
+    vector<cv::Mat> seqD;
     ei::MatrixXf Dm;
-    MatrixX1s D;
+    ei::Array3Xf ptsP2, ptsA;
     vector<ei::Matrix3Xf>::iterator itPts = seqPts.begin();
-    for(; itPts != seqPts.end(); itPts++)
+    for(int i = 0; itPts != seqPts.end(); itPts++, i++)
     {
-        Dm=Tr.row(2)*(*itPts).colwise().homogeneous();
-        Dm = Dm*depthScale;
-        ei::Array<float,1,ei::Dynamic> Da = Dm.array();
-        Dm = Da.round().matrix();
-//        cout<<Dm<<endl;
-        for(int i=0; i<Dm.cols(); i++)
-        {
-            if(Dm(0,i)<0) Dm(0,i)=0;
-            if(Dm(0,i)>=2e16) Dm(0,i)=2e16-1;
-        }
-        D = Dm.cast<unsigned short>();
-//        cout<<D<<endl<<endl;
-        seqD.push_back(D);
+        ptsA = (*itPts).array();
+        (*itPts) = ptsA.matrix();
+        (*itPts)=Tr*(*itPts).colwise().homogeneous();
+        ptsP2=(P[2]*(*itPts).colwise().homogeneous()).array();
+        ptsP2.rowwise() /= ptsP2.row(2);
+        cout<<endl<<endl<<ptsP2.rowwise().maxCoeff()<<endl<<endl;
+        cout<<ptsP2.rowwise().minCoeff()<<endl<<endl<<endl;
+        Dm=(*itPts).row(2);
+        cout<<endl<<endl<<Dm.rowwise().maxCoeff()<<endl<<endl;
+        cout<<Dm.rowwise().minCoeff()<<endl<<endl<<endl;
+        exit(0);
+//        Dm = Dm*depthScale;
+//        ei::Array<float,1,ei::Dynamic> Da = Dm.array();
+//        Dm = Da.round().matrix();
+//        D = cv::Mat::zeros(color.size(), CV_16U);
+//        for(int j=0; j<Dm.cols(); j++) //save the smaller depth
+//        {
+//            unsigned short d = (unsigned short) Dm(0,j);
+//            uint x, y;
+//            if(d<=0) break;
+//            else if(d>=2e16 && (D(ptsP2(1,j), ptsP2(0,j)) == 0)) D(ptsP2(1,j), ptsP2(0,j)) = 2e16-1;
+//            else if(D(ptsP2(1,j), ptsP2(0,j)) > d) D(ptsP2(1,j), ptsP2(0,j)) = d;
+//            else break;
+//        }
+//        cv::imshow( "Display window", D);
+//        cv::waitKey(0);
+//        //Todo: Interpolate regular?
+//        seqD.push_back(D.clone());
+//        cout<<"Projecting 3d lidar points, calculating/scaling depth "<<distance(seqPts.begin(),itPts)+1<<"/"<<seqPts.size()<<endl;
     }
 
-
-
-
-    //Initialize depth images to zero (equal size color image)
-    //for each point:
-        //round(x,y / downsamling factor)
-            //if D > max range --> D = max range
-            //D = D·sampling
-        //if D is non zero:
-            //save smaller D
-
-
-     //Interpolate regular?
-
-    //Save png color and png depth
-
+    //Todo: Save png color and png depth instead of append
 
     exit(0);
 }
