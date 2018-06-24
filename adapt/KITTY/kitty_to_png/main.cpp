@@ -305,31 +305,37 @@ int main(int argc, char **argv)
     vector<ei::Matrix3Xf> seqPts;
     vector<vector<float> > seqI;
     streampos begin,end;
-    int numPts, i;
+    int numPts;
     vector<bf::path>::iterator itBin = binPaths.begin();
     for(; itBin != binPaths.end(); itBin++)
     {
-        ifstream inLid((*itBin).c_str(), ios::binary);
-        if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
-        begin = inLid.tellg();
-        inLid.seekg (0, ios::end);
-        end = inLid.tellg();
-        inLid.seekg(0, ios::beg);
-        numPts = (end-begin)/(4*sizeof(float)); //calculate number of points
+        // allocate 4 MB buffer (only ~130*4*4 KB are needed)
+        int32_t buff = 1000000;
+        float *data = (float*)malloc(buff*sizeof(float));
+
+        // pointers
+        float *px = data+0;
+        float *py = data+1;
+        float *pz = data+2;
+        float *pr = data+3;
+
+        // fill buffer
+        FILE *inLid;
+        inLid = fopen ((*itBin).c_str(),"rb");
+        numPts = fread(data,sizeof(float),buff,inLid)/4;
+
+        // load point cloud
         pts = ei::Matrix3Xf::Zero(3, numPts);
         vector<float> I(numPts);
-        for (i=0; i<numPts; i++)
-        {
-                if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
-                inLid.read((char *) &X, sizeof(float));
-                inLid.read((char *) &Y, sizeof(float));
-                inLid.read((char *) &Z, sizeof(float));
-                inLid.read((char *) &I.at(i), sizeof(float));
-                pts.col(i) << X, Y, Z;
+        for (int i=0; i<numPts; i++) {
+            pts.col(i) << *px, *py, *pz;
+            I.at(i) = *pr;
+            px+=4; py+=4; pz+=4; pr+=4;
         }
+
         seqPts.push_back(pts);
         seqI.push_back(I);
-        inLid.close();
+        fclose(inLid);
         cout<<"Loading lidar "<<distance(binPaths.begin(),itBin)+1<<"/"<<binPaths.size()<<endl;
     }
 
