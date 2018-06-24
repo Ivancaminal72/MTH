@@ -4,7 +4,7 @@ module load slurm/15.08.9-1
 
 #modules
 echo "loading modules"
-module load eigen/3.2.8 \
-			opencv/2.4.9 \
+module load eigen/3.3.4 \
+			opencv/3.4.1 \
 			boost/1.60 \
 
