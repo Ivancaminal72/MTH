@@ -16,7 +16,8 @@ namespace bf = boost::filesystem;
 namespace ei = Eigen;
 
 typedef ei::Matrix<float, 3, 4> Matrix34f;
-typedef ei::Matrix<unsigned short, 1, ei::Dynamic> MatrixX1s;
+typedef ei::Matrix<ushort, 1, ei::Dynamic> Matrix1Xs;
+typedef ei::Matrix<float, 1, ei::Dynamic> Matrix1Xf;
 
 
 static struct option long_opt[] = {
@@ -28,6 +29,8 @@ static struct option long_opt[] = {
     {"data",            required_argument,      0,   255+1  },
     {"lidar",           required_argument,      0,   255+2  },
     {"camera",          required_argument,      0,   255+3  },
+    {"width",           required_argument,      0,   255+4  },
+    {"heigh",           required_argument,      0,   255+5  },
     {"help",            no_argument,            0,   'h'    },
     {0,                 0,                      0,   0      }
 };
@@ -177,7 +180,8 @@ int main(int argc, char **argv)
 {
     bf::path inPath, outPath;
     string data_folder = "sequences", lidar_folder = "velodyne", camera_folder = "image_2", sequence;
-    float downsampling, range;
+    float dfactor=1, range;
+    int width=1226, heigh =370;
 
     /*****************************Parser*****************************/
     bool mandatory;
@@ -195,8 +199,11 @@ int main(int argc, char **argv)
             printf("%s '%f' meters\n", findName(c).c_str(), range);
             break;
         case 'd':
-            downsampling = atof(optarg);
-            printf("%s '%f'\n", findName(c).c_str(), downsampling);
+            dfactor = atof(optarg);
+            if(dfactor < 1 && dfactor > 0) printf("%s '%f'\n", findName(c).c_str(), dfactor);
+            else if(dfactor > 1) {dfactor = 1/dfactor; printf("%s '%f'\n", findName(c).c_str(), dfactor);}
+            else if(dfactor == 1) break;
+            else parse_error("Invalid downsampling factor\n");
             break;
         case 's':
             sequence = optarg;
@@ -224,11 +231,19 @@ int main(int argc, char **argv)
             camera_folder = optarg;
             printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
             break;
+        case 255+4:
+            width = atoi(optarg);
+            printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
+            break;
+        case 255+5:
+            heigh = atoi(optarg);
+            printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
+            break;
         case 'h':
             printf("Usage: %s mandatory [optional]\n", argv[0]);
             printf("\nMandatory args:\n");
-            printf(" -r, --range        aproximate maximum lidar range\n");
-            printf(" -d, --downsampling image downsampling factor [1,max]\n");
+            printf(" -r, --range        aproximate maximum lidar range (in meters)\n");
+            printf(" -d, --downsampling image downsampling factor (0,1)\n");
             printf(" -i, --input        kitty dataset directory\n");
             printf(" -s, --sequence     number of the sequence to convert\n");
             printf(" -o, --output       directory to save generated PNG files\n");
@@ -236,6 +251,8 @@ int main(int argc, char **argv)
             printf(" --data             folder name contaning the data (lidar, cameras...) {default: sequences}\n");
             printf(" --lidar            folder name contaning .bin lidar files {default: velodyne}\n");
             printf(" --camera           folder name contaning .png color images {default: image_2}\n");
+            printf(" --width            pixels of camera sensor width {default: %f}\n", width);
+            printf(" --heigh            pixels of camera sensor heigh {default: %f}\n", heigh);
             printf(" -h, --help         print this help and exit\n\n");
             exit(0);
         default:
@@ -300,10 +317,11 @@ int main(int argc, char **argv)
     vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
 
     //for every pointcloud get XYZI values
-    float X,Y,Z;
+    float X,Y,Z,R;
     ei::Matrix3Xf pts;
+    Matrix1Xf Im;
     vector<ei::Matrix3Xf> seqPts;
-    vector<vector<float> > seqI;
+    vector<Matrix1Xf> seqIm;
     streampos begin,end;
     int numPts, i;
     vector<bf::path>::iterator itBin = binPaths.begin();
@@ -317,18 +335,19 @@ int main(int argc, char **argv)
         inLid.seekg(0, ios::beg);
         numPts = (end-begin)/(4*sizeof(float)); //calculate number of points
         pts = ei::Matrix3Xf::Zero(3, numPts);
-        vector<float> I(numPts);
+        Im = Matrix1Xf::Zero(1, numPts);
         for (i=0; i<numPts; i++)
         {
                 if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
                 inLid.read((char *) &X, sizeof(float));
                 inLid.read((char *) &Y, sizeof(float));
                 inLid.read((char *) &Z, sizeof(float));
-                inLid.read((char *) &I.at(i), sizeof(float));
+                inLid.read((char *) &R, sizeof(float));
                 pts.col(i) << X, Y, Z;
+                Im.col(i) << R;
         }
         seqPts.push_back(pts);
-        seqI.push_back(I);
+        seqIm.push_back(Im);
         inLid.close();
         cout<<"Loading lidar "<<distance(binPaths.begin(),itBin)+1<<"/"<<binPaths.size()<<endl;
     }
@@ -371,11 +390,8 @@ int main(int argc, char **argv)
     {
         color = cv::imread((*itPng).c_str(), IMREAD_COLOR);
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
-        if(downsampling > 1) //Downsample color images
-        {
-            float factor = 1/downsampling;
-            cv::resize(color.clone(), color, Size(), factor, factor, cv::INTER_LINEAR);
-        }
+        //Downsample color images
+        if(dfactor != 1) cv::resize(color.clone(), color, Size(), dfactor, dfactor, cv::INTER_LINEAR);
         seqColor.push_back(color.clone());
 //        cv::imshow( "Display window", color );
 //        cv::waitKey(0);
@@ -386,42 +402,62 @@ int main(int argc, char **argv)
     //recenter top-left -> //Todo: first observe max min values...
 
     //compute x,y and scaled depth
-    cv::Mat D;
-    vector<cv::Mat> seqD;
-    ei::MatrixXf Dm;
+    uint inside=0,outside=0,valid=0;
+    float sWidth=width*dfactor, sHeigh=heigh*dfactor;
+    cv::Mat D,I;
+    int x, y;
+    vector<cv::Mat> seqD, seqI;
+    Matrix1Xf Dm;
     ei::Array3Xf ptsP2, ptsA;
     vector<ei::Matrix3Xf>::iterator itPts = seqPts.begin();
-    for(int i = 0; itPts != seqPts.end(); itPts++, i++)
+    vector<Matrix1Xf>::iterator itIm = seqIm.begin();
+    for(int i = 0; itPts != seqPts.end(); itPts++, i++, itIm++)
     {
         ptsA = (*itPts).array();
         (*itPts) = ptsA.matrix();
         (*itPts)=Tr*(*itPts).colwise().homogeneous();
         ptsP2=(P[2]*(*itPts).colwise().homogeneous()).array();
         ptsP2.rowwise() /= ptsP2.row(2);
-        cout<<endl<<endl<<ptsP2.rowwise().maxCoeff()<<endl<<endl;
-        cout<<ptsP2.rowwise().minCoeff()<<endl<<endl<<endl;
         Dm=(*itPts).row(2);
-        cout<<endl<<endl<<Dm.rowwise().maxCoeff()<<endl<<endl;
-        cout<<Dm.rowwise().minCoeff()<<endl<<endl<<endl;
-        exit(0);
-//        Dm = Dm*depthScale;
-//        ei::Array<float,1,ei::Dynamic> Da = Dm.array();
-//        Dm = Da.round().matrix();
-//        D = cv::Mat::zeros(color.size(), CV_16U);
-//        for(int j=0; j<Dm.cols(); j++) //save the smaller depth
-//        {
-//            unsigned short d = (unsigned short) Dm(0,j);
-//            uint x, y;
-//            if(d<=0) break;
-//            else if(d>=2e16 && (D(ptsP2(1,j), ptsP2(0,j)) == 0)) D(ptsP2(1,j), ptsP2(0,j)) = 2e16-1;
-//            else if(D(ptsP2(1,j), ptsP2(0,j)) > d) D(ptsP2(1,j), ptsP2(0,j)) = d;
-//            else break;
-//        }
-//        cv::imshow( "Display window", D);
-//        cv::waitKey(0);
-//        //Todo: Interpolate regular?
-//        seqD.push_back(D.clone());
-//        cout<<"Projecting 3d lidar points, calculating/scaling depth "<<distance(seqPts.begin(),itPts)+1<<"/"<<seqPts.size()<<endl;
+        Dm = Dm*depthScale;
+        ei::Array<float,1,ei::Dynamic> Da = Dm.array();
+        Dm = Da.round().matrix();
+        D = cv::Mat::zeros(color.size(), CV_16U);
+        I = cv::Mat::zeros(color.size(), CV_32F);
+        for(int j=0; j<Dm.cols(); j++) //iterate depth values
+        {
+            x = round(ptsP2(0,j)*dfactor);
+            y = round(ptsP2(1,j)*dfactor);
+
+            //Not applied: the percentage of inside and valid points is reduced to //0.02%
+//            x += (int)(sWidth/2);
+//            y -= (int)(sHeigh/2);
+//            y *= -1;
+
+            if(x<(int)(sWidth) && x>=0 && y<(int)(sHeigh) && y>=0) //consider only points projected within camera sensor
+            {
+                inside ++;
+                if(Dm(0,j)>0) //only positive depth
+                {
+                    valid++;
+                    ushort d = (ushort) Dm(0,j);
+                    if(d>=pow(2,16) && D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=pow(2,16)-1;
+                    else if(D.at<ushort>(y,x) > d) D.at<ushort>(y,x)=d;//pow(2,16)-1; //save the smaller depth
+                }
+                I.at<float>(y,x) = (*itIm)(0,j);
+            }
+            else outside ++;
+        }
+//        cout<<endl<<endl<< (float)inside/(inside+outside)<<"% inside depths"<<endl; //32%
+//        cout<<endl<<endl<< (float)valid/(inside+outside)<<"% inside and valid depths"<<endl; //0.15% !!!
+
+        //Display
+        cv::imshow( "Display window", D);
+        cv::waitKey(1);
+
+        //Todo: Interpolate regular?
+        seqD.push_back(D.clone());
+        cout<<"Projecting 3d lidar points, calculating/scaling depth "<<distance(seqPts.begin(),itPts)+1<<"/"<<seqPts.size()<<endl;
     }
 
     //Todo: Save png color and png depth instead of append
