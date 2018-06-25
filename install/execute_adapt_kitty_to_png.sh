@@ -11,9 +11,9 @@ module load eigen/3.3.4 \
 #execute
 cd /imatge/icaminal/workspace/adapt/KITTY/kitty_to_png/build
 pwd
-srun --x11 --mem=8GB -c4 ./kitty_to_png \
+srun-fast --x11 --mem=8GB -c1 ./kitty_to_png \
 -r 120 \
--d 4 \
+-d 1 \
 -i /imatge/icaminal/projects/world3d/2018-slam/dataset/ \
 -s 22 \
 -o /imatge/icaminal/projects/world3d/2018-slam/dataset/generated/
