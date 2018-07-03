@@ -29,8 +29,6 @@ static struct option long_opt[] = {
     {"data",            required_argument,      0,   255+1  },
     {"lidar",           required_argument,      0,   255+2  },
     {"camera",          required_argument,      0,   255+3  },
-    {"width",           required_argument,      0,   255+4  },
-    {"heigh",           required_argument,      0,   255+5  },
     {"help",            no_argument,            0,   'h'    },
     {0,                 0,                      0,   0      }
 };
@@ -181,7 +179,6 @@ int main(int argc, char **argv)
     bf::path inPath, outPath;
     string data_folder = "sequences", lidar_folder = "velodyne", camera_folder = "image_2", sequence;
     float dfactor=1, range;
-    int width=1226, heigh =370;
 
     /*****************************Parser*****************************/
     bool mandatory;
@@ -231,14 +228,6 @@ int main(int argc, char **argv)
             camera_folder = optarg;
             printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
             break;
-        case 255+4:
-            width = atoi(optarg);
-            printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
-            break;
-        case 255+5:
-            heigh = atoi(optarg);
-            printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
-            break;
         case 'h':
             printf("Usage: %s mandatory [optional]\n", argv[0]);
             printf("\nMandatory args:\n");
@@ -251,8 +240,6 @@ int main(int argc, char **argv)
             printf(" --data             folder name contaning the data (lidar, cameras...) {default: sequences}\n");
             printf(" --lidar            folder name contaning .bin lidar files {default: velodyne}\n");
             printf(" --camera           folder name contaning .png color images {default: image_2}\n");
-            printf(" --width            pixels of camera sensor width {default: %f}\n", width);
-            printf(" --heigh            pixels of camera sensor heigh {default: %f}\n", heigh);
             printf(" -h, --help         print this help and exit\n\n");
             exit(0);
         default:
@@ -383,13 +370,16 @@ int main(int argc, char **argv)
     }
 
     //Load color images
+    int width, heigh;
     cv::Mat color;
     vector<cv::Mat> seqColor;
     vector<bf::path>::iterator itPng = pngPaths.begin();
     for(; itPng != pngPaths.end(); itPng++)
     {
         color = cv::imread((*itPng).c_str(), IMREAD_COLOR);
+        if(itPng == pngPaths.begin()) {width = color.cols; heigh = color.rows;}
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
+
         //Downsample color images
         if(dfactor != 1) cv::resize(color.clone(), color, Size(), dfactor, dfactor, cv::INTER_LINEAR);
         seqColor.push_back(color.clone());
