@@ -441,15 +441,16 @@ int main(int argc, char **argv)
                 {
                     valid++;
                     ushort d = (ushort) Dm(0,j);
-                    if(d>=pow(2,16) && D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=pow(2,16)-1;
-                    else if(D.at<ushort>(y,x) > d) D.at<ushort>(y,x)=d;//pow(2,16)-1; //save the smaller depth
+                    if(d>=pow(2,16) && D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=pow(2,16)-1;//exceed established limit (save max)
+                    else if(D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=d;//pixel with no value (save sensed depth)
+                    else if(D.at<ushort>(y,x) > d) D.at<ushort>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
                 }
                 I.at<float>(y,x) = (*itIm)(0,j);
             }
             else outside ++;
         }
 //        cout<<endl<<endl<< (float)inside/(inside+outside)<<"% inside depths"<<endl; //32%
-//        cout<<endl<<endl<< (float)valid/(inside+outside)<<"% inside and valid depths"<<endl; //0.15% !!!
+//        cout<<endl<<endl<< (float)valid/(inside+outside)<<"% inside and valid depths"<<endl; //0.16% !!!
 
         //Display
         cv::imshow( "Display window", D);
