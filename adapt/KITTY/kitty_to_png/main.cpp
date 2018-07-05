@@ -136,7 +136,7 @@ bool hasFiles(bf::path p, string ext="")
         }
         else
         {
-            if(!ext.empty() && false)
+            if(!ext.empty())
             {
                 uint count = 0;
                 vector<bf::path> v;
@@ -235,7 +235,7 @@ int main(int argc, char **argv)
             printf(" -d, --downsampling image downsampling factor (0,1)\n");
             printf(" -i, --input        kitty dataset directory\n");
             printf(" -s, --sequence     number of the sequence to convert\n");
-            printf(" -o, --output       directory to save generated PNG files\n");
+            printf(" -o, --output       directory to save the transformed sequence\n");
             printf("\nOptional args:\n");
             printf(" --data             folder name contaning the data (lidar, cameras...) {default: sequences}\n");
             printf(" --lidar            folder name contaning .bin lidar files {default: velodyne}\n");
@@ -289,15 +289,18 @@ int main(int argc, char **argv)
     if(!verifyDir(cameraPath) or !hasFiles(cameraPath,".png")) parse_error();
     
     if(!verifyDir(outPath)) parse_error("Error creating save path\n");
-    bf::path outImage = outPath.native()+sequence+"/"+camera_folder+"/";
-    bf::path outLidar = outPath.native()+sequence+"/"+lidar_folder+"/";
-    if(!resetDir(outImage)) exit(1);
-    if(!resetDir(outLidar)) exit(1);
+    bf::path outCpath = outPath.native()+sequence+"/rgb/";
+    bf::path outDpath = outPath.native()+sequence+"/depth/";
+    bf::path outIpath = outPath.native()+sequence+"/intensity/";
+    if(!resetDir(outCpath)) exit(1);
+    if(!resetDir(outDpath)) exit(1);
+    if(!resetDir(outIpath)) exit(1);
 
     float depthScale = pow(2,16)/range; //calculate depth sampling per meter
-    printf("Scale %u   calculated depth scale (values/meter)\n", depthScale);
-    printf("Precision   %f   meters\n", 1.0/depthScale);
 
+    cout<<endl<<endl;
+    printf("Depth Scale %f   calculated depth scale (values/meter)\n", depthScale);
+    printf("Precision   %f   meters\n\n\n", 1.0/depthScale);
 
     //load data paths
     vector<bf::path> binPaths = getFilePaths(lidarPath, ".bin");
@@ -368,6 +371,7 @@ int main(int argc, char **argv)
             }
         }
     }
+    incalib.close();
 
     //Load color images
     int width, heigh;
@@ -388,9 +392,6 @@ int main(int argc, char **argv)
         cout<<"Loading & downsampling camera image "<<distance(pngPaths.begin(),itPng)+1<<"/"<<pngPaths.size()<<endl;
     }
 
-
-    //recenter top-left -> //Todo: first observe max min values...
-
     //compute x,y and scaled depth
     uint inside=0,outside=0,valid=0;
     float sWidth=width*dfactor, sHeigh=heigh*dfactor;
@@ -401,7 +402,7 @@ int main(int argc, char **argv)
     ei::Array3Xf ptsP2, ptsA;
     vector<ei::Matrix3Xf>::iterator itPts = seqPts.begin();
     vector<Matrix1Xf>::iterator itIm = seqIm.begin();
-    for(int i = 0; itPts != seqPts.end(); itPts++, i++, itIm++)
+    for(int i = 1; itPts != seqPts.end(); itPts++, i++, itIm++)
     {
         ptsA = (*itPts).array();
         (*itPts) = ptsA.matrix();
@@ -419,7 +420,7 @@ int main(int argc, char **argv)
             x = round(ptsP2(0,j)*dfactor);
             y = round(ptsP2(1,j)*dfactor);
 
-            //Not applied: the percentage of inside and valid points is reduced to //0.02%
+            //Recenter top-left: (already done inside projection matrix) the percentage of inside and valid points is reduced to //0.02%
 //            x += (int)(sWidth/2);
 //            y -= (int)(sHeigh/2);
 //            y *= -1;
@@ -442,16 +443,74 @@ int main(int argc, char **argv)
 //        cout<<endl<<endl<< (float)inside/(inside+outside)<<"% inside depths"<<endl; //32%
 //        cout<<endl<<endl<< (float)valid/(inside+outside)<<"% inside and valid depths"<<endl; //0.16% !!!
 
-        //Display
-        cv::imshow( "Display window", D);
-        cv::waitKey(1);
+//        //Display
+//        cv::imshow( "Display window", D);
+//        cv::waitKey(1);
 
-        //Todo: Interpolate regular?
+        //####Todo: Interpolate D image??
+
         seqD.push_back(D.clone());
-        cout<<"Projecting 3d lidar points, calculating/scaling depth "<<distance(seqPts.begin(),itPts)+1<<"/"<<seqPts.size()<<endl;
+        seqI.push_back(I.clone());
+        cout<<"Projecting 3d lidar points with scaled depth "<<i<<"/"<<seqPts.size()<<endl;
     }
 
-    //Todo: Save png color and png depth instead of append
+
+    //Save png images
+    vector<cv::Mat>::iterator itD = seqD.begin(), itI = seqI.begin(), itColor = seqColor.begin();
+    vector<bf::path>::iterator itPaths = pngPaths.begin();
+    ifstream intimes(timesPath.c_str());
+    bf::path Ctxt = outPath.native()+sequence+"/rgb.txt";
+    bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
+    bf::path Itxt = outPath.native()+sequence+"/intensity.txt";
+    bf::path Atxt = outPath.native()+sequence+"/associations.txt";
+    ofstream outCtxt(Ctxt.c_str());
+    ofstream outDtxt(Dtxt.c_str());
+    ofstream outItxt(Itxt.c_str());
+    ofstream outAtxt(Atxt.c_str());
+    if(!intimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
+    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files\n");
+    float timestamp;
+    while(distance(seqD.begin(),itD) < seqD.size())
+    {
+        getline(intimes, l);
+        timestamp = stof(l);
+
+        outCtxt<<timestamp<<" ./rgb/"<<(*itPaths).filename().native()<<endl;
+        outDtxt<<timestamp<<" ./depth/"<<(*itPaths).filename().native()<<endl;
+        outItxt<<timestamp<<" ./intensity/"<<(*itPaths).filename().native()<<endl;
+        outAtxt<<timestamp<<" ./depth/"<<(*itPaths).filename().native()<<" "<<timestamp<<" ./rgb/"<<(*itPaths).filename().native()<<endl;
+
+        color = (*itColor).clone();
+        D = (*itD).clone();
+        I = (*itI).clone();
+
+//        cv::resize((*itColor).clone(), color, Size(640,480), 0, 0, cv::INTER_LINEAR);
+//        cv::resize((*itD).clone(), D, Size(640,480), 0, 0, cv::INTER_LINEAR);
+//        cv::resize((*itI).clone(), I, Size(640,480), 0, 0, cv::INTER_LINEAR);
+
+        if(!cv::imwrite(outCpath.native()+(*itPaths).filename().native(), color)) parse_error("Error saving rgb image\n");
+        if(!cv::imwrite(outDpath.native()+(*itPaths).filename().native(), D)) parse_error("Error saving depth image\n");
+        if(!cv::imwrite(outIpath.native()+(*itPaths).filename().native(), I)) parse_error("Error saving intensity image\n");
+
+        itD++;
+        itI++;
+        itColor++;
+        itPaths++;
+        cout<<"Saving color, depth and intensity images "<<distance(seqD.begin(),itD)<<"/"<<seqD.size()<<endl;
+    }
+
+    cout<<"Transformation complete!"<<endl;
+    heigh = color.rows;
+    width = color.cols;
+    cout<<endl<<endl;
+    cout<<"Heigh: "<<heigh<<" width: "<<width<<endl;
+    printf("Depth Scale %f   calculated depth scale (values/meter)\n", depthScale);
+    printf("Precision   %f   meters\n\n\n", 1.0/depthScale);
+
+    outCtxt.close();
+    outDtxt.close();
+    outItxt.close();
+    outAtxt.close();
 
     exit(0);
 }
