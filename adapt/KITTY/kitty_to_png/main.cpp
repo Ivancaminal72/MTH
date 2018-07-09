@@ -76,7 +76,12 @@ bool resetDir(bf::path p)
 {
     try
     {
-        if(bf::exists(p) && bf::is_directory(p) && !bf::is_empty(p)) bf::remove_all(p);
+        if(bf::exists(p) && bf::is_directory(p) && !bf::is_empty(p)) {
+            char op;
+            printf("Remove %s? [y/n]\n", p.c_str());
+            cin>>op;
+            if(op == 'y') bf::remove_all(p);
+        }
         if(bf::exists(p) && bf::is_directory(p) && bf::is_empty(p)) return true;
         else if(createDirs(p)) return true;
         else return false;
@@ -374,14 +379,12 @@ int main(int argc, char **argv)
     incalib.close();
 
     //Load color images
-    int width, heigh;
     cv::Mat color;
     vector<cv::Mat> seqColor;
     vector<bf::path>::iterator itPng = pngPaths.begin();
     for(; itPng != pngPaths.end(); itPng++)
     {
         color = cv::imread((*itPng).c_str(), IMREAD_COLOR);
-        if(itPng == pngPaths.begin()) {width = color.cols; heigh = color.rows;}
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
 
         //Downsample color images
@@ -391,10 +394,24 @@ int main(int argc, char **argv)
 //        cv::waitKey(0);
         cout<<"Loading & downsampling camera image "<<distance(pngPaths.begin(),itPng)+1<<"/"<<pngPaths.size()<<endl;
     }
+    int heigh = color.rows;
+    int width = color.cols;
+
+    //Save kintinuous calib file
+    bf::path kintCalib = outPath.native()+sequence+"/kintinuous_calib.txt";
+    ofstream outKintCalib(kintCalib.c_str());
+    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
+    outKintCalib<<P[2](0,0)<<" ";
+    outKintCalib<<P[2](1,1)<<" ";
+    outKintCalib<<P[2](0,2)<<" ";
+    outKintCalib<<P[2](1,2)<<" ";
+    outKintCalib<<width<<" ";
+    outKintCalib<<heigh<<endl;
+    outKintCalib.close();
+
 
     //compute x,y and scaled depth
     uint inside=0,outside=0,valid=0;
-    float sWidth=width*dfactor, sHeigh=heigh*dfactor;
     cv::Mat D,I;
     int x, y;
     vector<cv::Mat> seqD, seqI;
@@ -420,12 +437,7 @@ int main(int argc, char **argv)
             x = round(ptsP2(0,j)*dfactor);
             y = round(ptsP2(1,j)*dfactor);
 
-            //Recenter top-left: (already done inside projection matrix) the percentage of inside and valid points is reduced to //0.02%
-//            x += (int)(sWidth/2);
-//            y -= (int)(sHeigh/2);
-//            y *= -1;
-
-            if(x<(int)(sWidth) && x>=0 && y<(int)(sHeigh) && y>=0) //consider only points projected within camera sensor
+            if(x<width && x>=0 && y<heigh && y>=0) //consider only points projected within camera sensor
             {
                 inside ++;
                 if(Dm(0,j)>0) //only positive depth
@@ -500,10 +512,8 @@ int main(int argc, char **argv)
     }
 
     cout<<"Transformation complete!"<<endl;
-    heigh = color.rows;
-    width = color.cols;
     cout<<endl<<endl;
-    cout<<"Heigh: "<<heigh<<" width: "<<width<<endl;
+    cout<<"width: "<<width<<" heigh: "<<heigh<<endl;
     printf("Depth Scale %f   calculated depth scale (values/meter)\n", depthScale);
     printf("Precision   %f   meters\n\n\n", 1.0/depthScale);
 
