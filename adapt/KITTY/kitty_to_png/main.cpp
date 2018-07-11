@@ -364,7 +364,8 @@ int main(int argc, char **argv)
             for(int i=0; line.good(); i++)
             {
                 line>>word;
-                P[cam](i/4, i%4) = stof(word);
+                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(word)*dfactor;
+                else P[cam](i/4, i%4) = stof(word);
             }
         }
         else
@@ -434,8 +435,8 @@ int main(int argc, char **argv)
         I = cv::Mat::zeros(color.size(), CV_32F);
         for(int j=0; j<Dm.cols(); j++) //iterate depth values
         {
-            x = round(ptsP2(0,j)*dfactor);
-            y = round(ptsP2(1,j)*dfactor);
+            x = round(ptsP2(0,j));
+            y = round(ptsP2(1,j));
 
             if(x<width && x>=0 && y<heigh && y>=0) //consider only points projected within camera sensor
             {
@@ -445,7 +446,7 @@ int main(int argc, char **argv)
                     valid++;
                     ushort d = (ushort) Dm(0,j);
                     if(d>=pow(2,16) && D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=pow(2,16)-1;//exceed established limit (save max)
-                    else if(D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=d;//pixel with no value (save sensed depth)
+                    else if(D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=d;//pixel without value (save sensed depth)
                     else if(D.at<ushort>(y,x) > d) D.at<ushort>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
                 }
                 I.at<float>(y,x) = (*itIm)(0,j);
