@@ -195,7 +195,7 @@ int main(int argc, char **argv)
     float dfactor=1, range;
 
     /*****************************Parser*****************************/
-    bool mandatory, progress=true;
+    bool mandatory;
     int c, longindex=0;
     const char *short_opt = "r:d:i:s:o:h";
     std::vector<int> flags={ 'r', 'd', 'i', 's', 'o'};
@@ -297,6 +297,10 @@ int main(int argc, char **argv)
     bf::path cameraPath = dataPath.native()+sequence+"/"+camera_folder;
     bf::path calibPath = dataPath.native()+sequence+"/calib.txt";
     bf::path timesPath = dataPath.native()+sequence+"/times.txt";
+    bf::path Ctxt = outPath.native()+sequence+"/rgb.txt";
+    bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
+    bf::path Itxt = outPath.native()+sequence+"/intensity.txt";
+    bf::path Atxt = outPath.native()+sequence+"/associations.txt";
     
     if(!verifyDir(dataPath) or !hasFiles(dataPath,"")) parse_error();
     if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".bin")) parse_error();
@@ -310,23 +314,43 @@ int main(int argc, char **argv)
     if(!resetDir(outDpath)) exit(1);
     if(!resetDir(outIpath)) exit(1);
 
-    float depthScale = pow(2,16)/range; //calculate depth sampling per meter
-
-    cout<<endl<<endl;
-    printf("Depth Scale %f   (values/meter)\n", depthScale);
-    printf("Precision   %f   (meters)\n\n\n", 1.0/depthScale);
-
-    //load data paths
     vector<bf::path> binPaths = getFilePaths(lidarPath, ".bin");
     vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
     if(binPaths.size() != pngPaths.size()) parse_error("Different number of lidar/camera frames\n");
 
-    //Load transformations from calib file
     ifstream incalib(calibPath.c_str());
+    ifstream intimes(timesPath.c_str());
+    ofstream outCtxt(Ctxt.c_str());
+    ofstream outDtxt(Dtxt.c_str());
+    ofstream outItxt(Itxt.c_str());
+    ofstream outAtxt(Atxt.c_str());
     if(!incalib.good()) parse_error("Error reading file: "+calibPath.native()+"\n");
+    if(!intimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
+    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files\n");
+
+
+    //Declare variables
+    float X, Y, Z, R, timestamp, depthScale;
+    int numPts, i, f, heigh, width, x, y, frames = binPaths.size();
+    uint inside,outside,valid;
     string l, num;
     istringstream line;
+    streampos begin, end;
     Matrix34f P[4], Tr;
+    ei::Matrix3Xf pts;
+    Matrix1Xf Im,Dm;
+    ei::Array3Xf ptsP;
+    cv::Mat color, D, I;
+    vector<bf::path>::iterator itBin, itPng;
+
+
+    //Calculate depth sampling per meter
+    depthScale = pow(2,16)/range;
+    printf("\n\nDepth Scale: %f   (values/meter)\n", depthScale);
+    printf("Precision:   %f   (meters)\n\n\n", 1.0/depthScale);
+
+
+    //Load transformations from calib file
     while(getline(incalib, l))
     {
         line.str(l);
@@ -338,7 +362,7 @@ int main(int argc, char **argv)
             for(int i=0; line.good(); i++)
             {
                 line>>num;
-                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(num)*dfactor; //Scale intrinsic
+                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(num)*dfactor; //Scale intrinsics
                 else P[cam](i/4, i%4) = stof(num);
             }
         }
@@ -354,40 +378,16 @@ int main(int argc, char **argv)
     incalib.close();
 
 
-    float X,Y,Z,R,timestamp;
-    int numPts, i, heigh, width, x, y, frames = binPaths.size();
-    uint inside,outside,valid;
-    streampos begin,end;
-    ei::Matrix3Xf pts;
-    Matrix1Xf Im,Dm;
-    ei::Array3Xf ptsP2;
-    cv::Mat color, D, I;
-    vector<bf::path>::iterator itBin = binPaths.begin(), itPng = pngPaths.begin();
-
-    ifstream intimes(timesPath.c_str());
-    bf::path Ctxt = outPath.native()+sequence+"/rgb.txt";
-    bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
-    bf::path Itxt = outPath.native()+sequence+"/intensity.txt";
-    bf::path Atxt = outPath.native()+sequence+"/associations.txt";
-    ofstream outCtxt(Ctxt.c_str());
-    ofstream outDtxt(Dtxt.c_str());
-    ofstream outItxt(Itxt.c_str());
-    ofstream outAtxt(Atxt.c_str());
-    if(!intimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
-    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files\n");
-
-
-    //For every frame...
-    for(int f = 0; f<frames; itBin++, itPng++, f++)
+    //For every frame
+    for(f = 0, itBin = binPaths.begin(), itPng = pngPaths.begin(); f<frames; f++, itBin++, itPng++)
     {
-        if(progress) updateProgress(f+1, frames);
+        updateProgress(f+1, frames);
 
         //Load timestamp
         getline(intimes, l);
         timestamp = stof(l);
 
         //Load pointcloud and get XYZI values
-        if(!progress) cout<<"Load pointcloud and get XYZI values"<<endl;
         ifstream inLid((*itBin).c_str(), ios::binary);
         if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
         begin = inLid.tellg();
@@ -410,7 +410,6 @@ int main(int argc, char **argv)
         inLid.close();
 
         //Load color images
-        if(!progress) cout<<"Load color images"<<endl;
         color = cv::imread((*itPng).c_str(), IMREAD_UNCHANGED);
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
         cv::cvtColor(color, color, COLOR_BGR2RGB);
@@ -423,10 +422,9 @@ int main(int argc, char **argv)
 //        cv::waitKey(5);
 
         //Project 3d lidar points and calculate scaled depth
-        if(!progress) cout<<"Project 3d lidar points and calculate scaled depth"<<endl;
         pts=Tr*pts.colwise().homogeneous();
-        ptsP2=(P[2]*pts.colwise().homogeneous()).array();
-        ptsP2.rowwise() /= ptsP2.row(2);
+        ptsP=(P[2]*pts.colwise().homogeneous()).array();
+        ptsP.rowwise() /= ptsP.row(2);
         Dm=pts.row(2);
         Dm = Dm*depthScale;
         ei::Array<float,1,ei::Dynamic> Da = Dm.array();
@@ -436,8 +434,8 @@ int main(int argc, char **argv)
         inside=0, outside=0, valid=0;
         for(i=0; i<Dm.cols(); i++) //iterate depth values
         {
-            x = round(ptsP2(0,i));
-            y = round(ptsP2(1,i));
+            x = round(ptsP(0,i));
+            y = round(ptsP(1,i));
 
             if(x<width && x>=0 && y<heigh && y>=0) //consider only points projected within camera sensor
             {
@@ -465,7 +463,6 @@ int main(int argc, char **argv)
 
 
         //Save color, depth and intensity images
-        if(!progress) cout<<"Save color, depth and intensity images"<<endl;
         outCtxt<<timestamp<<" ./rgb/"<<(*itPng).filename().native()<<endl;
         outDtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<endl;
         outItxt<<timestamp<<" ./intensity/"<<(*itPng).filename().native()<<endl;
@@ -475,7 +472,6 @@ int main(int argc, char **argv)
         if(!cv::imwrite(outDpath.native()+(*itPng).filename().native(), D)) parse_error("Error saving depth image\n");
         if(!cv::imwrite(outIpath.native()+(*itPng).filename().native(), I)) parse_error("Error saving intensity image\n");
     }
-
     outCtxt.close();
     outDtxt.close();
     outItxt.close();
@@ -483,7 +479,6 @@ int main(int argc, char **argv)
 
 
     //Save kintinuous calib file
-    if(!progress) cout<<"Save kintinuous calib file"<<endl;
     bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
     ofstream outKintCalib(kintCalib.c_str());
     if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
