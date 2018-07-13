@@ -89,23 +89,24 @@ void convertToKlg(
                     getcwd(NULL, 0)) + "/" +
                     it->second.second;
 
-        IplImage *img = 
-            cvLoadImage(strAbsPath.c_str(), 
-                        CV_LOAD_IMAGE_UNCHANGED);
-        if(img == NULL)
-        {
-            fclose(logFile);
-            return;
-        }
+        cv::Mat img = imread(strAbsPath.c_str(), cv::IMREAD_UNCHANGED);
 
-        int32_t imageSize = img->height * img->width * sizeof(unsigned char) * 3;
+//        if(img == NULL)
+//        {
+//            fclose(logFile);
+//            return;
+//        }
 
-        unsigned char * rgbData = 0;
-        rgbData = (unsigned char *)img->imageData;
+
+        int32_t imageSize = img.total() * img.elemSize();
+
+
+//        unsigned char * rgbData = 0;
+//        rgbData = (unsigned char *)img->imageData;
 
         std::cout << '\r'
                   << std::setw(4) << std::setfill('0') << count << " / "
-                  << std::setw(4) << std::setfill('0') << vec_info.size() 
+                  << std::setw(4) << std::setfill('0') << vec_info.size()
                   << std::flush;
         count++;
 
@@ -122,10 +123,11 @@ void convertToKlg(
         fwrite((char*)depth.data, depthSize, 1, logFile);
 
         /// RGB buffer
-        fwrite(rgbData, imageSize, 1, logFile);
+        fwrite((char*)img.data, imageSize, 1, logFile);
 
-        cvReleaseImage(&img);
+//        cvReleaseImage(&img);
         depth.release();
+        img.release();
     }
     std::cout << std::endl;
 

@@ -237,7 +237,7 @@ int main(int argc, char **argv)
             printf("Usage: %s mandatory [optional]\n", argv[0]);
             printf("\nMandatory args:\n");
             printf(" -r, --range        aproximate maximum lidar range (in meters)\n");
-            printf(" -d, --downsampling image downsampling factor (0,1)\n");
+            printf(" -d, --downsampling image downsampling\n");
             printf(" -i, --input        kitty dataset directory\n");
             printf(" -s, --sequence     number of the sequence to convert\n");
             printf(" -o, --output       directory to save the transformed sequence\n");
@@ -350,30 +350,30 @@ int main(int argc, char **argv)
     //Load transformations from calib file
     ifstream incalib(calibPath.c_str());
     if(!incalib.good()) parse_error("Error reading file: "+calibPath.native()+"\n");
-    string l, word;
+    string l, num;
     istringstream line;
     Matrix34f P[4], Tr;
     while(getline(incalib, l))
     {
         line.str(l);
         line.clear();
-        line>>word;
-        if(word[0]=='P')
+        line>>num;
+        if(num[0]=='P')
         {
-            int cam = word[1] - '0';
+            int cam = num[1] - '0';
             for(int i=0; line.good(); i++)
             {
-                line>>word;
-                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(word)*dfactor;
-                else P[cam](i/4, i%4) = stof(word);
+                line>>num;
+                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(num)*dfactor; //Scale intrinsic
+                else P[cam](i/4, i%4) = stof(num);
             }
         }
         else
         {
             for(int i=0; line.good(); i++)
             {
-                line>>word;
-                Tr(i/4, i%4) = stof(word);
+                line>>num;
+                Tr(i/4, i%4) = stof(num);
             }
         }
     }
@@ -385,7 +385,8 @@ int main(int argc, char **argv)
     vector<bf::path>::iterator itPng = pngPaths.begin();
     for(; itPng != pngPaths.end(); itPng++)
     {
-        color = cv::imread((*itPng).c_str(), IMREAD_COLOR);
+        color = cv::imread((*itPng).c_str(), IMREAD_UNCHANGED);
+        cv::cvtColor(color, color, COLOR_BGR2RGB);
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
 
         //Downsample color images
@@ -399,7 +400,7 @@ int main(int argc, char **argv)
     int width = color.cols;
 
     //Save kintinuous calib file
-    bf::path kintCalib = outPath.native()+sequence+"/kintinuous_calib.txt";
+    bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
     ofstream outKintCalib(kintCalib.c_str());
     if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
     outKintCalib<<P[2](0,0)<<" ";
@@ -496,10 +497,6 @@ int main(int argc, char **argv)
         color = (*itColor).clone();
         D = (*itD).clone();
         I = (*itI).clone();
-
-//        cv::resize((*itColor).clone(), color, Size(640,480), 0, 0, cv::INTER_LINEAR);
-//        cv::resize((*itD).clone(), D, Size(640,480), 0, 0, cv::INTER_LINEAR);
-//        cv::resize((*itI).clone(), I, Size(640,480), 0, 0, cv::INTER_LINEAR);
 
         if(!cv::imwrite(outCpath.native()+(*itPaths).filename().native(), color)) parse_error("Error saving rgb image\n");
         if(!cv::imwrite(outDpath.native()+(*itPaths).filename().native(), D)) parse_error("Error saving depth image\n");
