@@ -311,6 +311,38 @@ int main(int argc, char **argv)
     vector<bf::path> binPaths = getFilePaths(lidarPath, ".bin");
     vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
 
+    //Load transformations from calib file
+    ifstream incalib(calibPath.c_str());
+    if(!incalib.good()) parse_error("Error reading file: "+calibPath.native()+"\n");
+    string l, num;
+    istringstream line;
+    Matrix34f P[4], Tr;
+    while(getline(incalib, l))
+    {
+        line.str(l);
+        line.clear();
+        line>>num;
+        if(num[0]=='P')
+        {
+            int cam = num[1] - '0';
+            for(int i=0; line.good(); i++)
+            {
+                line>>num;
+                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(num)*dfactor; //Scale intrinsic
+                else P[cam](i/4, i%4) = stof(num);
+            }
+        }
+        else
+        {
+            for(int i=0; line.good(); i++)
+            {
+                line>>num;
+                Tr(i/4, i%4) = stof(num);
+            }
+        }
+    }
+    incalib.close();
+
     //for every pointcloud get XYZI values
     float X,Y,Z,R;
     ei::Matrix3Xf pts;
@@ -347,38 +379,6 @@ int main(int argc, char **argv)
         cout<<"Loading lidar "<<distance(binPaths.begin(),itBin)+1<<"/"<<binPaths.size()<<endl;
     }
 
-    //Load transformations from calib file
-    ifstream incalib(calibPath.c_str());
-    if(!incalib.good()) parse_error("Error reading file: "+calibPath.native()+"\n");
-    string l, num;
-    istringstream line;
-    Matrix34f P[4], Tr;
-    while(getline(incalib, l))
-    {
-        line.str(l);
-        line.clear();
-        line>>num;
-        if(num[0]=='P')
-        {
-            int cam = num[1] - '0';
-            for(int i=0; line.good(); i++)
-            {
-                line>>num;
-                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(num)*dfactor; //Scale intrinsic
-                else P[cam](i/4, i%4) = stof(num);
-            }
-        }
-        else
-        {
-            for(int i=0; line.good(); i++)
-            {
-                line>>num;
-                Tr(i/4, i%4) = stof(num);
-            }
-        }
-    }
-    incalib.close();
-
     //Load color images
     cv::Mat color;
     vector<cv::Mat> seqColor;
@@ -398,19 +398,6 @@ int main(int argc, char **argv)
     }
     int heigh = color.rows;
     int width = color.cols;
-
-    //Save kintinuous calib file
-    bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
-    ofstream outKintCalib(kintCalib.c_str());
-    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
-    outKintCalib<<P[2](0,0)<<" ";
-    outKintCalib<<P[2](1,1)<<" ";
-    outKintCalib<<P[2](0,2)<<" ";
-    outKintCalib<<P[2](1,2)<<" ";
-    outKintCalib<<width<<" ";
-    outKintCalib<<heigh<<endl;
-    outKintCalib.close();
-
 
     //compute x,y and scaled depth
     uint inside=0,outside=0,valid=0;
@@ -508,6 +495,18 @@ int main(int argc, char **argv)
         itPaths++;
         cout<<"Saving color, depth and intensity images "<<distance(seqD.begin(),itD)<<"/"<<seqD.size()<<endl;
     }
+
+    //Save kintinuous calib file
+    bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
+    ofstream outKintCalib(kintCalib.c_str());
+    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
+    outKintCalib<<P[2](0,0)*4.0/120<<" ";
+    outKintCalib<<P[2](1,1)*4.0/120<<" ";
+    outKintCalib<<P[2](0,2)*4.0/120<<" ";
+    outKintCalib<<P[2](1,2)*4.0/120<<" ";
+    outKintCalib<<width<<" ";
+    outKintCalib<<heigh<<endl;
+    outKintCalib.close();
 
     cout<<"Transformation complete!"<<endl;
     cout<<endl<<endl;
