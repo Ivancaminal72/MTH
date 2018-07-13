@@ -16,7 +16,6 @@ namespace bf = boost::filesystem;
 namespace ei = Eigen;
 
 typedef ei::Matrix<float, 3, 4> Matrix34f;
-typedef ei::Matrix<ushort, 1, ei::Dynamic> Matrix1Xs;
 typedef ei::Matrix<float, 1, ei::Dynamic> Matrix1Xf;
 
 
@@ -141,16 +140,16 @@ bool hasFiles(bf::path p, string ext="")
         }
         else
         {
-            if(!ext.empty())
-            {
-                uint count = 0;
-                vector<bf::path> v;
-                copy(bf::directory_iterator(p), bf::directory_iterator(), back_inserter(v));
-                sort(v.begin(), v.end());
-                vector<bf::path>::iterator it = v.begin();
-                for(; it != v.end(); it++) if((*it).native().find(ext) != string::npos) count++;
-                cout<<"Has "<<count<<" "<<ext<< " files"<<endl;
-            }
+//            if(!ext.empty())
+//            {
+//                uint count = 0;
+//                vector<bf::path> v;
+//                copy(bf::directory_iterator(p), bf::directory_iterator(), back_inserter(v));
+//                sort(v.begin(), v.end());
+//                vector<bf::path>::iterator it = v.begin();
+//                for(; it != v.end(); it++) if((*it).native().find(ext) != string::npos) count++;
+//                cout<<"Has "<<count<<" "<<ext<< " files"<<endl;
+//            }
             return true;
         }
     }
@@ -179,6 +178,16 @@ vector<boost::filesystem::path> getFilePaths(bf::path directory, string filter="
     return paths;
 }
 
+void updateProgress(int val, int total)
+{
+    int space = (int) (log10((float) total)+1);
+    cout << '\r'
+         << "Progress: "
+         << setw(space) << setfill('0') << val << "/"
+         << setw(space) << setfill('0') << total
+         << flush;
+}
+
 int main(int argc, char **argv)
 {
     bf::path inPath, outPath;
@@ -186,7 +195,7 @@ int main(int argc, char **argv)
     float dfactor=1, range;
 
     /*****************************Parser*****************************/
-    bool mandatory;
+    bool mandatory, progress=true;
     int c, longindex=0;
     const char *short_opt = "r:d:i:s:o:h";
     std::vector<int> flags={ 'r', 'd', 'i', 's', 'o'};
@@ -304,12 +313,13 @@ int main(int argc, char **argv)
     float depthScale = pow(2,16)/range; //calculate depth sampling per meter
 
     cout<<endl<<endl;
-    printf("Depth Scale %f   calculated depth scale (values/meter)\n", depthScale);
-    printf("Precision   %f   meters\n\n\n", 1.0/depthScale);
+    printf("Depth Scale %f   (values/meter)\n", depthScale);
+    printf("Precision   %f   (meters)\n\n\n", 1.0/depthScale);
 
     //load data paths
     vector<bf::path> binPaths = getFilePaths(lidarPath, ".bin");
     vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
+    if(binPaths.size() != pngPaths.size()) parse_error("Different number of lidar/camera frames\n");
 
     //Load transformations from calib file
     ifstream incalib(calibPath.c_str());
@@ -343,17 +353,41 @@ int main(int argc, char **argv)
     }
     incalib.close();
 
-    //for every pointcloud get XYZI values
-    float X,Y,Z,R;
-    ei::Matrix3Xf pts;
-    Matrix1Xf Im;
-    vector<ei::Matrix3Xf> seqPts;
-    vector<Matrix1Xf> seqIm;
+
+    float X,Y,Z,R,timestamp;
+    int numPts, i, heigh, width, x, y, frames = binPaths.size();
+    uint inside,outside,valid;
     streampos begin,end;
-    int numPts, i;
-    vector<bf::path>::iterator itBin = binPaths.begin();
-    for(; itBin != binPaths.end(); itBin++)
+    ei::Matrix3Xf pts;
+    Matrix1Xf Im,Dm;
+    ei::Array3Xf ptsP2;
+    cv::Mat color, D, I;
+    vector<bf::path>::iterator itBin = binPaths.begin(), itPng = pngPaths.begin();
+
+    ifstream intimes(timesPath.c_str());
+    bf::path Ctxt = outPath.native()+sequence+"/rgb.txt";
+    bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
+    bf::path Itxt = outPath.native()+sequence+"/intensity.txt";
+    bf::path Atxt = outPath.native()+sequence+"/associations.txt";
+    ofstream outCtxt(Ctxt.c_str());
+    ofstream outDtxt(Dtxt.c_str());
+    ofstream outItxt(Itxt.c_str());
+    ofstream outAtxt(Atxt.c_str());
+    if(!intimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
+    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files\n");
+
+
+    //For every frame...
+    for(int f = 0; f<frames; itBin++, itPng++, f++)
     {
+        if(progress) updateProgress(f+1, frames);
+
+        //Load timestamp
+        getline(intimes, l);
+        timestamp = stof(l);
+
+        //Load pointcloud and get XYZI values
+        if(!progress) cout<<"Load pointcloud and get XYZI values"<<endl;
         ifstream inLid((*itBin).c_str(), ios::binary);
         if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
         begin = inLid.tellg();
@@ -373,130 +407,83 @@ int main(int argc, char **argv)
                 pts.col(i) << X, Y, Z;
                 Im.col(i) << R;
         }
-        seqPts.push_back(pts);
-        seqIm.push_back(Im);
         inLid.close();
-        cout<<"Loading lidar "<<distance(binPaths.begin(),itBin)+1<<"/"<<binPaths.size()<<endl;
-    }
 
-    //Load color images
-    cv::Mat color;
-    vector<cv::Mat> seqColor;
-    vector<bf::path>::iterator itPng = pngPaths.begin();
-    for(; itPng != pngPaths.end(); itPng++)
-    {
+        //Load color images
+        if(!progress) cout<<"Load color images"<<endl;
         color = cv::imread((*itPng).c_str(), IMREAD_UNCHANGED);
-        cv::cvtColor(color, color, COLOR_BGR2RGB);
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
+        cv::cvtColor(color, color, COLOR_BGR2RGB);
 
         //Downsample color images
         if(dfactor != 1) cv::resize(color.clone(), color, Size(), dfactor, dfactor, cv::INTER_LINEAR);
-        seqColor.push_back(color.clone());
-//        cv::imshow( "Display window", color );
-//        cv::waitKey(0);
-        cout<<"Loading & downsampling camera image "<<distance(pngPaths.begin(),itPng)+1<<"/"<<pngPaths.size()<<endl;
-    }
-    int heigh = color.rows;
-    int width = color.cols;
+        if(f==0) {heigh = color.rows; width = color.cols;}
 
-    //compute x,y and scaled depth
-    uint inside=0,outside=0,valid=0;
-    cv::Mat D,I;
-    int x, y;
-    vector<cv::Mat> seqD, seqI;
-    Matrix1Xf Dm;
-    ei::Array3Xf ptsP2, ptsA;
-    vector<ei::Matrix3Xf>::iterator itPts = seqPts.begin();
-    vector<Matrix1Xf>::iterator itIm = seqIm.begin();
-    for(int i = 1; itPts != seqPts.end(); itPts++, i++, itIm++)
-    {
-        ptsA = (*itPts).array();
-        (*itPts) = ptsA.matrix();
-        (*itPts)=Tr*(*itPts).colwise().homogeneous();
-        ptsP2=(P[2]*(*itPts).colwise().homogeneous()).array();
+//        cv::imshow( "Display window", color );
+//        cv::waitKey(5);
+
+        //Project 3d lidar points and calculate scaled depth
+        if(!progress) cout<<"Project 3d lidar points and calculate scaled depth"<<endl;
+        pts=Tr*pts.colwise().homogeneous();
+        ptsP2=(P[2]*pts.colwise().homogeneous()).array();
         ptsP2.rowwise() /= ptsP2.row(2);
-        Dm=(*itPts).row(2);
+        Dm=pts.row(2);
         Dm = Dm*depthScale;
         ei::Array<float,1,ei::Dynamic> Da = Dm.array();
         Dm = Da.round().matrix();
         D = cv::Mat::zeros(color.size(), CV_16U);
         I = cv::Mat::zeros(color.size(), CV_32F);
-        for(int j=0; j<Dm.cols(); j++) //iterate depth values
+        inside=0, outside=0, valid=0;
+        for(i=0; i<Dm.cols(); i++) //iterate depth values
         {
-            x = round(ptsP2(0,j));
-            y = round(ptsP2(1,j));
+            x = round(ptsP2(0,i));
+            y = round(ptsP2(1,i));
 
             if(x<width && x>=0 && y<heigh && y>=0) //consider only points projected within camera sensor
             {
-                inside ++;
-                if(Dm(0,j)>0) //only positive depth
+                inside +=1;
+                if(Dm(0,i)>0) //only positive depth
                 {
-                    valid++;
-                    ushort d = (ushort) Dm(0,j);
+                    valid+=1;
+                    ushort d = (ushort) Dm(0,i);
                     if(d>=pow(2,16) && D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=pow(2,16)-1;//exceed established limit (save max)
                     else if(D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=d;//pixel without value (save sensed depth)
                     else if(D.at<ushort>(y,x) > d) D.at<ushort>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
                 }
-                I.at<float>(y,x) = (*itIm)(0,j);
+                I.at<float>(y,x) = Im(0,i);
             }
-            else outside ++;
+            else outside+=1;
         }
+
 //        cout<<endl<<endl<< (float)inside/(inside+outside)<<"% inside depths"<<endl; //32%
 //        cout<<endl<<endl<< (float)valid/(inside+outside)<<"% inside and valid depths"<<endl; //0.16% !!!
 
-//        //Display
 //        cv::imshow( "Display window", D);
 //        cv::waitKey(1);
 
         //####Todo: Interpolate D image??
 
-        seqD.push_back(D.clone());
-        seqI.push_back(I.clone());
-        cout<<"Projecting 3d lidar points with scaled depth "<<i<<"/"<<seqPts.size()<<endl;
+
+        //Save color, depth and intensity images
+        if(!progress) cout<<"Save color, depth and intensity images"<<endl;
+        outCtxt<<timestamp<<" ./rgb/"<<(*itPng).filename().native()<<endl;
+        outDtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<endl;
+        outItxt<<timestamp<<" ./intensity/"<<(*itPng).filename().native()<<endl;
+        outAtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<" "<<timestamp<<" ./rgb/"<<(*itPng).filename().native()<<endl;
+
+        if(!cv::imwrite(outCpath.native()+(*itPng).filename().native(), color)) parse_error("Error saving rgb image\n");
+        if(!cv::imwrite(outDpath.native()+(*itPng).filename().native(), D)) parse_error("Error saving depth image\n");
+        if(!cv::imwrite(outIpath.native()+(*itPng).filename().native(), I)) parse_error("Error saving intensity image\n");
     }
 
+    outCtxt.close();
+    outDtxt.close();
+    outItxt.close();
+    outAtxt.close();
 
-    //Save png images
-    vector<cv::Mat>::iterator itD = seqD.begin(), itI = seqI.begin(), itColor = seqColor.begin();
-    vector<bf::path>::iterator itPaths = pngPaths.begin();
-    ifstream intimes(timesPath.c_str());
-    bf::path Ctxt = outPath.native()+sequence+"/rgb.txt";
-    bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
-    bf::path Itxt = outPath.native()+sequence+"/intensity.txt";
-    bf::path Atxt = outPath.native()+sequence+"/associations.txt";
-    ofstream outCtxt(Ctxt.c_str());
-    ofstream outDtxt(Dtxt.c_str());
-    ofstream outItxt(Itxt.c_str());
-    ofstream outAtxt(Atxt.c_str());
-    if(!intimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
-    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files\n");
-    float timestamp;
-    while(distance(seqD.begin(),itD) < seqD.size())
-    {
-        getline(intimes, l);
-        timestamp = stof(l);
-
-        outCtxt<<timestamp<<" ./rgb/"<<(*itPaths).filename().native()<<endl;
-        outDtxt<<timestamp<<" ./depth/"<<(*itPaths).filename().native()<<endl;
-        outItxt<<timestamp<<" ./intensity/"<<(*itPaths).filename().native()<<endl;
-        outAtxt<<timestamp<<" ./depth/"<<(*itPaths).filename().native()<<" "<<timestamp<<" ./rgb/"<<(*itPaths).filename().native()<<endl;
-
-        color = (*itColor).clone();
-        D = (*itD).clone();
-        I = (*itI).clone();
-
-        if(!cv::imwrite(outCpath.native()+(*itPaths).filename().native(), color)) parse_error("Error saving rgb image\n");
-        if(!cv::imwrite(outDpath.native()+(*itPaths).filename().native(), D)) parse_error("Error saving depth image\n");
-        if(!cv::imwrite(outIpath.native()+(*itPaths).filename().native(), I)) parse_error("Error saving intensity image\n");
-
-        itD++;
-        itI++;
-        itColor++;
-        itPaths++;
-        cout<<"Saving color, depth and intensity images "<<distance(seqD.begin(),itD)<<"/"<<seqD.size()<<endl;
-    }
 
     //Save kintinuous calib file
+    if(!progress) cout<<"Save kintinuous calib file"<<endl;
     bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
     ofstream outKintCalib(kintCalib.c_str());
     if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
@@ -508,17 +495,7 @@ int main(int argc, char **argv)
     outKintCalib<<heigh<<endl;
     outKintCalib.close();
 
-    cout<<"Transformation complete!"<<endl;
-    cout<<endl<<endl;
-    cout<<"width: "<<width<<" heigh: "<<heigh<<endl;
-    printf("Depth Scale %f   calculated depth scale (values/meter)\n", depthScale);
-    printf("Precision   %f   meters\n\n\n", 1.0/depthScale);
-
-    outCtxt.close();
-    outDtxt.close();
-    outItxt.close();
-    outAtxt.close();
-
+    cout<<endl<<endl<<"Transformation complete!"<<endl;
     exit(0);
 }
 
