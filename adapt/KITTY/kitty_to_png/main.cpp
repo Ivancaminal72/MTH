@@ -196,7 +196,7 @@ int main(int argc, char **argv)
 
     /*****************************Parser*****************************/
     bool mandatory;
-    int c, longindex=0;
+    int c, longindex=0, camera;
     const char *short_opt = "r:d:i:s:o:h";
     std::vector<int> flags={ 'r', 'd', 'i', 's', 'o'};
     ostringstream msg;
@@ -240,6 +240,8 @@ int main(int argc, char **argv)
             break;
         case 255+3:
             camera_folder = optarg;
+            camera = (int) (camera_folder.back() - '0');
+            if(camera<0 || camera>3) parse_error("Invalid --camera folder\n");
             printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
             break;
         case 'h':
@@ -297,9 +299,9 @@ int main(int argc, char **argv)
     bf::path cameraPath = dataPath.native()+sequence+"/"+camera_folder;
     bf::path calibPath = dataPath.native()+sequence+"/calib.txt";
     bf::path timesPath = dataPath.native()+sequence+"/times.txt";
-    bf::path Ctxt = outPath.native()+sequence+"/rgb.txt";
+    bf::path Ctxt = outPath.native()+sequence+"/visible.txt";
     bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
-    bf::path Itxt = outPath.native()+sequence+"/intensity.txt";
+    bf::path Itxt = outPath.native()+sequence+"/infrared.txt";
     bf::path Atxt = outPath.native()+sequence+"/associations.txt";
     
     if(!verifyDir(dataPath) or !hasFiles(dataPath,"")) parse_error();
@@ -307,9 +309,9 @@ int main(int argc, char **argv)
     if(!verifyDir(cameraPath) or !hasFiles(cameraPath,".png")) parse_error();
     
     if(!verifyDir(outPath)) parse_error("Error creating save path\n");
-    bf::path outCpath = outPath.native()+sequence+"/rgb/";
+    bf::path outCpath = outPath.native()+sequence+"/visible/";
     bf::path outDpath = outPath.native()+sequence+"/depth/";
-    bf::path outIpath = outPath.native()+sequence+"/intensity/";
+    bf::path outIpath = outPath.native()+sequence+"/infrared/";
     if(!resetDir(outCpath)) exit(1);
     if(!resetDir(outDpath)) exit(1);
     if(!resetDir(outIpath)) exit(1);
@@ -330,13 +332,14 @@ int main(int argc, char **argv)
 
 
     //Declare variables
+    bool isColorCamera = (camera == 2 || camera == 3) ? true : false;
     float X, Y, Z, R, timestamp, depthScale;
     int numPts, i, f, heigh, width, x, y, frames = binPaths.size();
     uint inside,outside,valid;
     string l, num;
     istringstream line;
     streampos begin, end;
-    Matrix34f P[4], Tr;
+    Matrix34f P, Tr;
     ei::Matrix3Xf pts;
     Matrix1Xf Im,Dm;
     ei::Array3Xf ptsP;
@@ -358,13 +361,17 @@ int main(int argc, char **argv)
         line>>num;
         if(num[0]=='P')
         {
-            int cam = num[1] - '0';
-            for(int i=0; line.good(); i++)
+            if(camera == (int) num[1] - '0')
             {
-                line>>num;
-                if(i==0 || i==2 || i==5 || i==6) P[cam](i/4, i%4) = stof(num)*dfactor; //Scale intrinsics
-                else P[cam](i/4, i%4) = stof(num);
+                for(int i=0; line.good(); i++)
+                {
+                    line>>num;
+                    if(i==0 || i==2 || i==5 || i==6) P(i/4, i%4) = stof(num)*dfactor; //Scale intrinsics
+                    else P(i/4, i%4) = stof(num);
+                }
             }
+            else continue;
+
         }
         else
         {
@@ -412,7 +419,7 @@ int main(int argc, char **argv)
         //Load color images
         color = cv::imread((*itPng).c_str(), IMREAD_UNCHANGED);
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
-        cv::cvtColor(color, color, COLOR_BGR2RGB);
+        if(isColorCamera) cv::cvtColor(color, color, COLOR_BGR2RGB);
 
         //Downsample color images
         if(dfactor != 1) cv::resize(color.clone(), color, Size(), dfactor, dfactor, cv::INTER_LINEAR);
@@ -423,14 +430,14 @@ int main(int argc, char **argv)
 
         //Project 3d lidar points and calculate scaled depth
         pts=Tr*pts.colwise().homogeneous();
-        ptsP=(P[2]*pts.colwise().homogeneous()).array();
+        ptsP=(P*pts.colwise().homogeneous()).array();
         ptsP.rowwise() /= ptsP.row(2);
         Dm=pts.row(2);
         Dm = Dm*depthScale;
         ei::Array<float,1,ei::Dynamic> Da = Dm.array();
         Dm = Da.round().matrix();
-        D = cv::Mat::zeros(color.size(), CV_16U);
-        I = cv::Mat::zeros(color.size(), CV_32F);
+        D = cv::Mat::zeros(color.size(), CV_16UC1);
+        I = cv::Mat::zeros(color.size(), CV_32FC1);
         inside=0, outside=0, valid=0;
         for(i=0; i<Dm.cols(); i++) //iterate depth values
         {
@@ -463,10 +470,10 @@ int main(int argc, char **argv)
 
 
         //Save color, depth and intensity images
-        outCtxt<<timestamp<<" ./rgb/"<<(*itPng).filename().native()<<endl;
+        outCtxt<<timestamp<<" ./visible/"<<(*itPng).filename().native()<<endl;
         outDtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<endl;
-        outItxt<<timestamp<<" ./intensity/"<<(*itPng).filename().native()<<endl;
-        outAtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<" "<<timestamp<<" ./rgb/"<<(*itPng).filename().native()<<endl;
+        outItxt<<timestamp<<" ./infrared/"<<(*itPng).filename().native()<<endl;
+        outAtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<" "<<timestamp<<" ./visible/"<<(*itPng).filename().native()<<endl;
 
         if(!cv::imwrite(outCpath.native()+(*itPng).filename().native(), color)) parse_error("Error saving rgb image\n");
         if(!cv::imwrite(outDpath.native()+(*itPng).filename().native(), D)) parse_error("Error saving depth image\n");
@@ -482,12 +489,13 @@ int main(int argc, char **argv)
     bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
     ofstream outKintCalib(kintCalib.c_str());
     if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
-    outKintCalib<<P[2](0,0)*4.0/120<<" ";
-    outKintCalib<<P[2](1,1)*4.0/120<<" ";
-    outKintCalib<<P[2](0,2)*4.0/120<<" ";
-    outKintCalib<<P[2](1,2)*4.0/120<<" ";
+    outKintCalib<<P(0,0)<<" ";
+    outKintCalib<<P(1,1)<<" ";
+    outKintCalib<<P(0,2)<<" ";
+    outKintCalib<<P(1,2)<<" ";
     outKintCalib<<width<<" ";
     outKintCalib<<heigh<<endl;
+    outKintCalib<<range<<endl;
     outKintCalib.close();
 
     cout<<endl<<endl<<"Transformation complete!"<<endl;
