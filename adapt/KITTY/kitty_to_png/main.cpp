@@ -193,10 +193,11 @@ int main(int argc, char **argv)
     bf::path inPath, outPath;
     string data_folder = "sequences", lidar_folder = "velodyne", camera_folder = "image_2", sequence;
     float dfactor=1, range;
+    int camera;
 
     /*****************************Parser*****************************/
     bool mandatory;
-    int c, longindex=0, camera;
+    int c, longindex=0;
     const char *short_opt = "r:d:i:s:o:h";
     std::vector<int> flags={ 'r', 'd', 'i', 's', 'o'};
     ostringstream msg;

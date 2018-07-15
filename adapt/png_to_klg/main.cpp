@@ -209,7 +209,8 @@ int parseInfoFile(
                     }
                     else
                     {
-                        timeSeq = numb * 1000000;
+                        // timeSeq = numb * 1000000;
+                        timeSeq = numb;
                     }
                 }
                 else if(1 == iIdxToken)//depth path

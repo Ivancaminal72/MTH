@@ -1,0 +1,11 @@
+project(groundtruth_kitty_to_freiburg)
+cmake_minimum_required(VERSION 2.8)
+aux_source_directory(. SRC_LIST)
+set(Boost_INCLUDE_DIR /usr/include/)
+find_package(Boost COMPONENTS date_time filesystem system)
+add_executable(${PROJECT_NAME} ${SRC_LIST})
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+endif()
+
