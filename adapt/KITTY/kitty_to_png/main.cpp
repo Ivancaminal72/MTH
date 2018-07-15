@@ -1,3 +1,10 @@
+/*
+ *
+ *  Created on: 17/6/2018
+ *      Author: Ivan Caminal
+ */
+
+
 #include <iostream>
 #include <math.h>
 #include <fstream>
@@ -33,13 +40,14 @@ static struct option long_opt[] = {
 };
 
 
-void parse_error(string message = "Try '--help' for more information.\n")
+void parse_error(string message = "Try '--help' for more information.")
 {
+    if(message[message.size()-1] != '\n') message+="\n";
     fprintf(stderr,message.c_str());
     exit(1);
 }
 
-string findName(int c)
+string getName(int c)
 {
     for (size_t i = 0; i < sizeof(long_opt); i++)
        {
@@ -199,7 +207,8 @@ int main(int argc, char **argv)
     bool mandatory;
     int c, longindex=0;
     const char *short_opt = "r:d:i:s:o:h";
-    std::vector<int> flags={ 'r', 'd', 'i', 's', 'o'};
+    vector<int> mandatories={ 'r', 'd', 'i', 's', 'o'};
+    vector<int> flags=mandatories;
     ostringstream msg;
     
     while ((c = getopt_long(argc, argv, short_opt, long_opt, &longindex)) != -1)
@@ -208,42 +217,42 @@ int main(int argc, char **argv)
         {
         case 'r':
             range = atof(optarg);
-            printf("%s '%f' meters\n", findName(c).c_str(), range);
+            printf("%s '%f' meters\n", getName(c).c_str(), range);
             break;
         case 'd':
             dfactor = atof(optarg);
-            if(dfactor < 1 && dfactor > 0) printf("%s '%f'\n", findName(c).c_str(), dfactor);
-            else if(dfactor > 1) {dfactor = 1/dfactor; printf("%s '%f'\n", findName(c).c_str(), dfactor);}
+            if(dfactor < 1 && dfactor > 0) printf("%s '%f'\n", getName(c).c_str(), dfactor);
+            else if(dfactor > 1) {dfactor = 1/dfactor; printf("%s '%f'\n", getName(c).c_str(), dfactor);}
             else if(dfactor == 1) break;
-            else parse_error("Invalid downsampling factor\n");
+            else parse_error("Invalid downsampling factor");
             break;
         case 's':
             sequence = optarg;
-            for(int i=0; i<sequence.size(); i++) if(!isdigit(sequence[i])) parse_error("Invalid sequence number\n");
+            for(int i=0; i<sequence.size(); i++) if(!isdigit(sequence[i])) parse_error("Invalid sequence number");
             if(sequence.size()==1) sequence.insert(1,"0");
-            printf("%s '%s'\n", findName(c).c_str(), sequence.c_str());
+            printf("%s '%s'\n", getName(c).c_str(), sequence.c_str());
             break;
         case 'i':
             inPath = optarg;
-            printf("%s '%s'\n", findName(c).c_str(), inPath.c_str());
+            printf("%s '%s'\n", getName(c).c_str(), inPath.c_str());
             break;
         case 'o':
             outPath = optarg;
-            printf("%s '%s'\n", findName(c).c_str(), outPath.c_str());
+            printf("%s '%s'\n", getName(c).c_str(), outPath.c_str());
             break;
         case 255+1:
             data_folder = optarg;
-            printf("%s '%s'\n", findName(c).c_str(), data_folder.c_str());
+            printf("%s '%s'\n", getName(c).c_str(), data_folder.c_str());
             break;
         case 255+2:
             lidar_folder = optarg;
-            printf("%s '%s'\n", findName(c).c_str(), lidar_folder.c_str());
+            printf("%s '%s'\n", getName(c).c_str(), lidar_folder.c_str());
             break;
         case 255+3:
             camera_folder = optarg;
             camera = (int) (camera_folder.back() - '0');
-            if(camera<0 || camera>3) parse_error("Invalid --camera folder\n");
-            printf("%s '%s'\n", findName(c).c_str(), camera_folder.c_str());
+            if(camera<0 || camera>3) parse_error("Invalid --camera folder");
+            printf("%s '%s'\n", getName(c).c_str(), camera_folder.c_str());
             break;
         case 'h':
             printf("Usage: %s mandatory [optional]\n", argv[0]);
@@ -263,13 +272,13 @@ int main(int argc, char **argv)
             parse_error();
         }
 
-        if(find(flags.begin(), flags.end(), c) != flags.end()) mandatory=true;
+        if(find(mandatories.begin(), mandatories.end(), c) != mandatories.end()) mandatory=true;
         else mandatory = false;
 
         if(mandatory)
         {
             if((int)distance(remove( flags.begin(), flags.end(), c), flags.end()) > 0) flags.pop_back();
-            else parse_error("Repeated mandatory argument -"+findName(c)+" \n");
+            else parse_error("Repeated mandatory argument: -"+getName(c));
         }
     }
 
@@ -279,7 +288,7 @@ int main(int argc, char **argv)
         msg<<"Missing: ";
         for( int i = 0; i < flags.size(); i++ )
             msg <<"-"<< (char)flags[i];
-        msg<<" (mandatory arguments)\n"<<endl;
+        msg<<" (mandatory arguments)"<<endl;
         parse_error(msg.str());
     }
 
@@ -309,7 +318,7 @@ int main(int argc, char **argv)
     if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".bin")) parse_error();
     if(!verifyDir(cameraPath) or !hasFiles(cameraPath,".png")) parse_error();
     
-    if(!verifyDir(outPath)) parse_error("Error creating save path\n");
+    if(!verifyDir(outPath)) parse_error("Error creating save path");
     bf::path outCpath = outPath.native()+sequence+"/visible/";
     bf::path outDpath = outPath.native()+sequence+"/depth/";
     bf::path outIpath = outPath.native()+sequence+"/infrared/";
@@ -319,7 +328,7 @@ int main(int argc, char **argv)
 
     vector<bf::path> binPaths = getFilePaths(lidarPath, ".bin");
     vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
-    if(binPaths.size() != pngPaths.size()) parse_error("Different number of lidar/camera frames\n");
+    if(binPaths.size() != pngPaths.size()) parse_error("Different number of lidar/camera frames");
 
     ifstream incalib(calibPath.c_str());
     ifstream intimes(timesPath.c_str());
@@ -327,9 +336,9 @@ int main(int argc, char **argv)
     ofstream outDtxt(Dtxt.c_str());
     ofstream outItxt(Itxt.c_str());
     ofstream outAtxt(Atxt.c_str());
-    if(!incalib.good()) parse_error("Error reading file: "+calibPath.native()+"\n");
+    if(!incalib.good()) parse_error("Error opening file: "+calibPath.native()+"\n");
     if(!intimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
-    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files\n");
+    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files");
 
 
     //Declare variables
@@ -419,7 +428,7 @@ int main(int argc, char **argv)
 
         //Load color images
         color = cv::imread((*itPng).c_str(), IMREAD_UNCHANGED);
-        if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"/n");
+        if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"\n");
         if(isColorCamera) cv::cvtColor(color, color, COLOR_BGR2RGB);
 
         //Downsample color images
@@ -476,9 +485,9 @@ int main(int argc, char **argv)
         outItxt<<timestamp<<" ./infrared/"<<(*itPng).filename().native()<<endl;
         outAtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<" "<<timestamp<<" ./visible/"<<(*itPng).filename().native()<<endl;
 
-        if(!cv::imwrite(outCpath.native()+(*itPng).filename().native(), color)) parse_error("Error saving rgb image\n");
-        if(!cv::imwrite(outDpath.native()+(*itPng).filename().native(), D)) parse_error("Error saving depth image\n");
-        if(!cv::imwrite(outIpath.native()+(*itPng).filename().native(), I)) parse_error("Error saving intensity image\n");
+        if(!cv::imwrite(outCpath.native()+(*itPng).filename().native(), color)) parse_error("Error saving rgb image");
+        if(!cv::imwrite(outDpath.native()+(*itPng).filename().native(), D)) parse_error("Error saving depth image");
+        if(!cv::imwrite(outIpath.native()+(*itPng).filename().native(), I)) parse_error("Error saving intensity image");
     }
     outCtxt.close();
     outDtxt.close();
@@ -489,7 +498,7 @@ int main(int argc, char **argv)
     //Save kintinuous calib file
     bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
     ofstream outKintCalib(kintCalib.c_str());
-    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file\n");
+    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file");
     outKintCalib<<P(0,0)<<" ";
     outKintCalib<<P(1,1)<<" ";
     outKintCalib<<P(0,2)<<" ";
