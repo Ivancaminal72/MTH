@@ -6,6 +6,7 @@
 
 
 #include <iostream>
+#include <iomanip>
 #include <math.h>
 #include <fstream>
 #include <stdio.h>
@@ -40,6 +41,32 @@ string getName(int c)
               return long_opt[i].name;
        }
     return "?";
+}
+
+bool verifyFile(bf::path p)
+{
+    cout<<endl<<p<<endl;
+    try
+    {
+        if(bf::exists(p))
+        {
+            if(bf::is_regular_file(p))
+            {
+                cout<<"Correct file"<<endl;
+                return true;
+            }
+            else
+            {
+                cout<<"Is not a regular file"<<endl;
+                return false;
+            }
+        }
+        else return false;
+    }
+    catch (const bf::filesystem_error& ex)
+    {
+    cout << ex.what() << '\n';
+    }
 }
 
 int main(int argc, char **argv)
@@ -113,9 +140,54 @@ int main(int argc, char **argv)
 
 
     /*****************************Program*****************************/
+    if(!verifyFile(inPath)) parse_error();
+    if(!verifyFile(tsPath)) parse_error();
 
+    ifstream inFile(inPath.c_str());
+    ifstream tsFile(tsPath.c_str());
+    ofstream outFile(outPath.c_str());
+    if(!inFile.good()) parse_error("Error opening file: "+inPath.native()+"\n");
+    if(!tsFile.good()) parse_error("Error opening file: "+tsPath.native()+"\n");
+    if(!outFile.good()) parse_error("Error opening file: "+outPath.native()+"\n");
 
+    istringstream line;
+    string l, num;
+    float ts, m[12], q[4];
 
+    while(true)
+    {
+        //Read timestamp
+        getline(tsFile, num);
+        if(tsFile.eof()) break;
+        ts = stof(num);
 
-    exit(0);
+        //Read kitty format
+        getline(inFile, l);
+        line.str(l);
+        line.clear();
+        line>>num;
+        for(int i=0; i < 12; i++)
+        {
+            line>>num;
+            m[i]= stof(num);
+        }
+
+        //Represent rotation matrix as unit quaternion
+        q[0] = 0.5*sqrt(1+m[0]+m[5]+m[10]);
+        q[1] = (m[9]-m[6])/4*q[0];
+        q[2] = (m[2]-m[8])/4*q[0];
+        q[3] = (m[4]-m[1])/4*q[0];
+
+        //Write freiburg format
+        stringstream strs;
+        strs << setprecision(6) << fixed << ts;
+        outFile<<strs.str()<<" "<<m[3]<<" "<<m[7]<<" "<<m[11]<<" ";
+        outFile<<q[0]<<" "<<q[1]<<" "<<q[2]<<" "<<q[3]<< "\n";
+
+    }
+    inFile.close();
+    outFile.close();
+    tsFile.close();
+
+    cout<<endl<<endl<<"Transformation complete!"<<endl;
 }

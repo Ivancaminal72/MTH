@@ -330,14 +330,14 @@ int main(int argc, char **argv)
     vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
     if(binPaths.size() != pngPaths.size()) parse_error("Different number of lidar/camera frames");
 
-    ifstream incalib(calibPath.c_str());
-    ifstream intimes(timesPath.c_str());
+    ifstream inCalib(calibPath.c_str());
+    ifstream inTimes(timesPath.c_str());
     ofstream outCtxt(Ctxt.c_str());
     ofstream outDtxt(Dtxt.c_str());
     ofstream outItxt(Itxt.c_str());
     ofstream outAtxt(Atxt.c_str());
-    if(!incalib.good()) parse_error("Error opening file: "+calibPath.native()+"\n");
-    if(!intimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
+    if(!inCalib.good()) parse_error("Error opening file: "+calibPath.native()+"\n");
+    if(!inTimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
     if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files");
 
 
@@ -364,8 +364,10 @@ int main(int argc, char **argv)
 
 
     //Load transformations from calib file
-    while(getline(incalib, l))
+    while(true)
     {
+        getline(inCalib, l);
+        if(inCalib.eof()) break;
         line.str(l);
         line.clear();
         line>>num;
@@ -392,7 +394,7 @@ int main(int argc, char **argv)
             }
         }
     }
-    incalib.close();
+    inCalib.close();
 
 
     //For every frame
@@ -401,7 +403,7 @@ int main(int argc, char **argv)
         updateProgress(f+1, frames);
 
         //Load timestamp
-        getline(intimes, l);
+        getline(inTimes, l);
         timestamp = stof(l);
 
         //Load pointcloud and get XYZI values
@@ -509,6 +511,5 @@ int main(int argc, char **argv)
     outKintCalib.close();
 
     cout<<endl<<endl<<"Transformation complete!"<<endl;
-    exit(0);
 }
 

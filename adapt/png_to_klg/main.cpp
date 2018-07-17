@@ -153,13 +153,13 @@ int parseInfoFile(
     char * line = NULL;
     size_t len = 0;
     ssize_t read;
+    long double num;
 
     FILE *pFile = fopen(strAssociation_Path.c_str(), "r");
     if(!pFile) {
         return -1;
     }
 
-    int iFrameCnt = 0;
     while ((read = getline(&line, &len, pFile)) != -1) {
 
         std::istringstream is(line);
@@ -192,26 +192,9 @@ int parseInfoFile(
                 }
                 else if(0 == iIdxToken)//Time depth
                 {
-                    /// Do nothing
-                    //std::cout << token << std::endl;
-                    token.erase(
-                        std::remove(token.begin(),
-                            token.end(), '.'), token.end());
-                    //std::cout << token << std::endl;
-                    long long unsigned int numb;
-                    std::istringstream ( token ) >> numb;
-
-                    if(true == g_bFlag_TUM)
-                    {
-                        timeSeq = (int64_t)numb;
-                        //timeSeq = iFrameCnt;
-                        iFrameCnt++;
-                    }
-                    else
-                    {
-                        // timeSeq = numb * 1000000;
-                        timeSeq = numb;
-                    }
+                    num = std::stold(token);
+                    num *= 1000000;
+                    timeSeq = (int64_t)num;
                 }
                 else if(1 == iIdxToken)//depth path
                 {
@@ -234,6 +217,7 @@ int main(int argc, char* argv[])
     int option_count = 0;
     std::string strAssociation_Path;
     std::string strKlgFileName, strCalib;
+    bool arg_o = false;
 
     int c = 0;
     while((c = getopt(argc, argv, "wortsc")) != -1)
@@ -251,11 +235,6 @@ int main(int argc, char* argv[])
             case 'r'://associations.txt is in reverse order (rgb)(depth)
                 option_count++;
                 g_bFlag_reverse = true;
-
-                break;
-            case 't'://TUM format
-                option_count++;
-                g_bFlag_TUM = true;
                 break;
             case 's'://TUM format
                 option_count++;
@@ -285,6 +264,8 @@ int main(int argc, char* argv[])
     }
 
 
+
+    if(!arg_o) strKlgFileName=strWorkingDir+"log_"+to_string((int)g_dScale)+".klg";
 
     /// Change working directory
     int ret = chdir(strWorkingDir.c_str());
