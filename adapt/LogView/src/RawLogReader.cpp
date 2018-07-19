@@ -14,7 +14,7 @@ RawLogReader::RawLogReader(Bytef *& decompressionBuffer,
  : decompressionBuffer(decompressionBuffer),
    deCompImage(deCompImage),
    file(file),
-   flipColors(flipColors), 
+   flipColors(flipColors),
    isCompressed(false)
 {
     assert(boost::filesystem::exists(file.c_str()));

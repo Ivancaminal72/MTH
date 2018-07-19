@@ -58,8 +58,10 @@ int main(int argc, char * argv[])
     cv::Mat1b tmp(height, width);
     cv::Mat3b depthImg(height, width);
 
+    double i = 0;
     while(logReader.hasMore())
     {
+        i++;
         logReader.getNext();
 
         cv::Mat3b rgbImg(height, width, (cv::Vec<unsigned char, 3> *)logReader.deCompImage->imageData);
@@ -68,11 +70,17 @@ int main(int argc, char * argv[])
 
         cv::normalize(depth, tmp, 0, 255, cv::NORM_MINMAX, 0);
 
+        cv::Scalar min, max;
+        // cv::minMaxLoc(depth, &min, &max);
+        max = mean(depth);
+        std::cout<<"Max "<<max/1000<<std::endl;
+
+
         cv::cvtColor(tmp, depthImg, CV_GRAY2RGB);
 
-        cv::imshow("RGB", rgbImg);
-
-        cv::imshow("Depth", depthImg);
+        // cv::imshow("RGB", rgbImg);
+        //
+        // cv::imshow("Depth", depthImg);
 
         char key = cv::waitKey(100);
 

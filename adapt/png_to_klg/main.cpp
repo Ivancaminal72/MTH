@@ -62,7 +62,7 @@ void convertToKlg(
 
 
     std::string filename = strKlgFileName;//"test2.klg";
-    FILE * logFile = fopen(filename.c_str(), "wb+");
+    FILE * logFile = fopen(filename.c_str(), "wb");
 
     int32_t numFrames = (int32_t)vec_info.size() - 1;
 
@@ -85,7 +85,6 @@ void convertToKlg(
 
         double depthScale = g_dScale;
         depth.convertTo(depth, CV_16UC1, 1000 * 1.0 / depthScale);
-
         int32_t depthSize = depth.total() * depth.elemSize();
 
         std::string strAbsPath = std::string(
@@ -231,6 +230,7 @@ int main(int argc, char* argv[])
             case 'o'://klg filename
                 option_count++;
                 strKlgFileName = std::string(argv[optind]);
+                arg_o=true;
                 break;
             case 'r'://associations.txt is in reverse order (rgb)(depth)
                 option_count++;
@@ -266,6 +266,7 @@ int main(int argc, char* argv[])
 
 
     if(!arg_o) strKlgFileName=strWorkingDir+"log_"+to_string((int)g_dScale)+".klg";
+    else strKlgFileName = strKlgFileName+"."+to_string((int)g_dScale);
 
     /// Change working directory
     int ret = chdir(strWorkingDir.c_str());

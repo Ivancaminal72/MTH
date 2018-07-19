@@ -250,8 +250,6 @@ int main(int argc, char **argv)
             break;
         case 255+3:
             camera_folder = optarg;
-            camera = (int) (camera_folder.back() - '0');
-            if(camera<0 || camera>3) parse_error("Invalid --camera folder");
             printf("%s '%s'\n", getName(c).c_str(), camera_folder.c_str());
             break;
         case 'h':
@@ -271,6 +269,9 @@ int main(int argc, char **argv)
         default:
             parse_error();
         }
+
+        camera = (int) (camera_folder.back() - '0');
+        if(camera<0 || camera>3) parse_error("Invalid --camera folder");
 
         if(find(mandatories.begin(), mandatories.end(), c) != mandatories.end()) mandatory=true;
         else mandatory = false;
