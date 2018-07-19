@@ -83,8 +83,7 @@ void convertToKlg(
 
         cv::Mat depth = imread(strAbsPathDepth.c_str(), cv::IMREAD_UNCHANGED);
 
-        double depthScale = g_dScale;
-        depth.convertTo(depth, CV_16UC1, 1000 * 1.0 / depthScale);
+        depth.convertTo(depth, CV_16UC1, 1000 * 1.0 / g_dScale);
         int32_t depthSize = depth.total() * depth.elemSize();
 
         std::string strAbsPath = std::string(
@@ -325,8 +324,8 @@ int main(int argc, char* argv[])
     ofstream outKintCalib(strCalib.c_str());
     outKintCalib<<fx*(1/g_dScale)<<" ";
     outKintCalib<<fy*(1/g_dScale)<<" ";
-    outKintCalib<<cx*(1/g_dScale)<<" ";
-    outKintCalib<<cy*(1/g_dScale)<<" ";
+    outKintCalib<<cx<<" ";
+    outKintCalib<<cy<<" ";
     outKintCalib<<w<<" ";
     outKintCalib<<h<<endl;
     outKintCalib<<(1/g_dScale)<<endl;
