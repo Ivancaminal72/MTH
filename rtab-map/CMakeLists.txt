@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
 # inside rtabmap project (see below for external build)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 SET(RTABMap_INCLUDE_DIR /usr/local/opt/rtabmap-0.17.1/include/rtabmap-0.17/)
 SET(RTABMap_LIBRARIES 
     /usr/local/opt/rtabmap-0.17.1/lib/librtabmap_utilite.so

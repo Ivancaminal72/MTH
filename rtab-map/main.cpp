@@ -90,6 +90,7 @@ int main(int argc, char * argv[])
 	std::string path;
 	std::string output;
 	std::string outputName = "rtabmap";
+	std::string calFile;
 	bool quiet = false;
 	if(argc < 2)
 	{
@@ -111,6 +112,10 @@ int main(int argc, char * argv[])
 			{
 				quiet = true;
 			}
+			else if(std::strcmp(argv[i], "--calib") == 0)
+			{
+				calFile = argv[++i];
+			}
 		}
 		parameters = Parameters::parseArguments(argc, argv);
 		path = argv[argc-1];
@@ -130,8 +135,10 @@ int main(int argc, char * argv[])
 	}
 
 	std::string seq = uSplit(path, '/').back();
-	std::string pathRgbImages  = path+"/rgb_sync";
-	std::string pathDepthImages = path+"/depth_sync";
+	// std::string pathRgbImages  = path+"/rgb_sync";
+	// std::string pathDepthImages = path+"/depth_sync";
+	std::string pathRgbImages  = path+"/visible";
+	std::string pathDepthImages = path+"/depth";
 	std::string pathGt = path+"/groundtruth.txt";
 	if(!UFile::exists(pathGt))
 	{
@@ -175,21 +182,36 @@ int main(int argc, char * argv[])
 	CameraModel model;
 	std::string sequenceName = UFile(path).getName();
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
-	float depthFactor = 5.0f;
-	if(sequenceName.find("freiburg1") != std::string::npos)
-	{
-		model = CameraModel(outputName+"_calib", 517.3, 516.5, 318.6, 255.3, opticalRotation, 0, cv::Size(640,480));
-	}
-	else if(sequenceName.find("freiburg2") != std::string::npos)
-	{
-		model = CameraModel(outputName+"_calib", 520.9, 521.0, 325.1, 249.7, opticalRotation, 0, cv::Size(640,480));
-	}
-	else //if(sequenceName.find("freiburg3") != std::string::npos)
-	{
-		model = CameraModel(outputName+"_calib", 535.4, 539.2, 320.1, 247.6, opticalRotation, 0, cv::Size(640,480));
-	}
+	// float depthFactor = 5.0f;
+	float depthFactor = 0.546133f;
+	std::ifstream file(calFile.c_str());
+	std::string line;
+
+	if(file.eof())
+		throw std::invalid_argument("Could not read calibration file.");
+
+	double fx, fy, cx, cy, w, h;
+	std::getline(file, line);
+	int n = sscanf(line.c_str(), "%lg %lg %lg %lg %lg %lg", &fx, &fy, &cx, &cy, &w, &h);
+	if(!file.eof())
+	std::getline(file, line);
+	double scale = 1.0/std::stod(line);
+	model = CameraModel(outputName+"_calib", fx, fy, cx, cy, opticalRotation, 0, cv::Size((int) 640,(int) 480));
+	// if(sequenceName.find("freiburg1") != std::string::npos)
+	// {
+	// 	model = CameraModel(outputName+"_calib", 517.3, 516.5, 318.6, 255.3, opticalRotation, 0, cv::Size(640,480));
+	// }
+	// else if(sequenceName.find("freiburg2") != std::string::npos)
+	// {
+	// 	model = CameraModel(outputName+"_calib", 520.9, 521.0, 325.1, 249.7, opticalRotation, 0, cv::Size(640,480));
+	// }
+	// else //if(sequenceName.find("freiburg3") != std::string::npos)
+	// {
+	// 	model = CameraModel(outputName+"_calib", 535.4, 539.2, 320.1, 247.6, opticalRotation, 0, cv::Size(640,480));
+	// }
 	//parameters.insert(ParametersPair(Parameters::kg2oBaseline(), uNumber2Str(40.0f/model.fx())));
-	model.save(path);
+	model.save(output);
+	// model.save(path);
 
 	CameraThread cameraThread(new
 		CameraRGBDImages(
@@ -212,7 +234,8 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
 	std::string databasePath = output+"/"+outputName+".db";
 	UFile::erase(databasePath);
-	if(cameraThread.camera()->init(path, outputName+"_calib"))
+	// if(cameraThread.camera()->init(path, outputName+"_calib"))
+	if(cameraThread.camera()->init(output+"/", outputName+"_calib"))
 	{
 		int totalImages = (int)((CameraRGBDImages*)cameraThread.camera())->filenames().size();
 

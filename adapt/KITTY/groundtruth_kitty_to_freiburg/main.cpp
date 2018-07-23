@@ -181,7 +181,7 @@ int main(int argc, char **argv)
         stringstream strs;
         strs << setprecision(6) << fixed << ts;
         outFile<<strs.str()<<" "<<m[3]<<" "<<m[7]<<" "<<m[11]<<" ";
-        outFile<<q[0]<<" "<<q[1]<<" "<<q[2]<<" "<<q[3]<< "\n";
+        outFile<<q[1]<<" "<<q[2]<<" "<<q[3]<<" "<<q[0]<< "\n";
 
     }
     inFile.close();
