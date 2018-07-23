@@ -190,13 +190,14 @@ int main(int argc, char * argv[])
 	if(file.eof())
 		throw std::invalid_argument("Could not read calibration file.");
 
-	double fx, fy, cx, cy, w, h;
+	double fx, fy, cx, cy, w, h, scale;
 	std::getline(file, line);
 	int n = sscanf(line.c_str(), "%lg %lg %lg %lg %lg %lg", &fx, &fy, &cx, &cy, &w, &h);
 	if(!file.eof())
 	std::getline(file, line);
-	double scale = 1.0/std::stod(line);
-	model = CameraModel(outputName+"_calib", fx, fy, cx, cy, opticalRotation, 0, cv::Size((int) 640,(int) 480));
+	sscanf(line.c_str(), "%lg", &scale);
+	scale = 1.0/scale;
+	model = CameraModel(outputName+"_calib", fx, fy, cx, cy, opticalRotation, 0, cv::Size((int) w,(int) h));
 	// if(sequenceName.find("freiburg1") != std::string::npos)
 	// {
 	// 	model = CameraModel(outputName+"_calib", 517.3, 516.5, 318.6, 255.3, opticalRotation, 0, cv::Size(640,480));
