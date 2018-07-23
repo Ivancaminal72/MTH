@@ -70,17 +70,17 @@ int main(int argc, char * argv[])
 
         cv::normalize(depth, tmp, 0, 255, cv::NORM_MINMAX, 0);
 
-        cv::Scalar min, max;
-        // cv::minMaxLoc(depth, &min, &max);
-        max = mean(depth);
-        std::cout<<"Max "<<max/1000<<std::endl;
+        // cv::Scalar min, max;
+        // // cv::minMaxLoc(depth, &min, &max);
+        // max = mean(depth);
+        // std::cout<<"Max "<<max/1000<<std::endl;
 
 
         cv::cvtColor(tmp, depthImg, CV_GRAY2RGB);
 
-        // cv::imshow("RGB", rgbImg);
-        //
-        // cv::imshow("Depth", depthImg);
+        cv::imshow("RGB", rgbImg);
+
+        cv::imshow("Depth", depthImg);
 
         char key = cv::waitKey(100);
 

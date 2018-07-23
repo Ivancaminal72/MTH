@@ -209,7 +209,7 @@ void MainController::loadCalibration()
             int n = sscanf(line.c_str(), "%lg %lg %lg %lg %lg %lg", &fx, &fy, &cx, &cy, &w, &h);
             if(!file.eof())
             std::getline(file, line);
-            scale = 1.0/stod(line);
+            scale = 1.0/std::stod(line);
 
             if (n != 4 && n != 6)
               throw std::invalid_argument("Ooops, your calibration file should contain a single line with [fx fy cx cy] or [fx fy cx cy w h]");

@@ -165,7 +165,6 @@ int main(int argc, char **argv)
         getline(inFile, l);
         line.str(l);
         line.clear();
-        line>>num;
         for(int i=0; i < 12; i++)
         {
             line>>num;
