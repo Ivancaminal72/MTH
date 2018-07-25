@@ -103,7 +103,8 @@ def plot_traj(ax,stamps,traj,style,color,label):
             y.append(traj[i][1])
             z.append(traj[i][2])
         elif len(x)>0:
-            ax.plot(x,y,style,color=color,label=label)
+            # ax.plot(x,y,style,color=color,label=label)
+            ax.scatter(x, y, z, c=color)
             label=""
             x=[]
             y=[]
