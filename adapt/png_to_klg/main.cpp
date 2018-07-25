@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
     if(file.eof())
       throw std::invalid_argument("Could not read calibration file.");
     std::getline(file, line);
-    sscanf(line.c_str(), "%lg", &range);
+    if(!file.eof()) sscanf(line.c_str(), "%lg", &range);
     file.close();
     relation = pow(2,16)/range;
     g_dScale/=relation;
