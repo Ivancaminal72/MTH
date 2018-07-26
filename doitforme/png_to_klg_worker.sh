@@ -1,18 +1,20 @@
 #!/bin/bash
 source ~/workspace/install/modules_tool_png_to_klg.sh
-ID=0
+path="/imatge/icaminal/datasets/kitty/generated"
 downsampling=1
-while [ "$ID" -lt 10 ]
-do
-    echo $ID
-	srun -c1 --mem=8G /imatge/icaminal/workspace/adapt/png_to_klg/build/pngtoklg -w ~/datasets/kitty/generated/0$ID/ -c ~/datasets/kitty/generated/0$ID/calib_$downsampling.000000.txt -o ~/datasets/kitty/generated/0${ID}_$downsampling/$downsampling.klg -s 10922.66666
+seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "22") 
+cd /imatge/icaminal/workspace/adapt/png_to_klg/build
+for ((i=0;i<${#seq_a[@]};++i)); do
+
+	seq_dir=$path/${seq_a[i]}
+	klg_dir=${seq_dir}_${downsampling}
+
+	rm -rf $klg_dir
+	mkdir $klg_dir
+
+    echo -e "\n\n Processing sequence: $seq_dir"
+	srun -c1 --mem=8G ./pngtoklg -w $seq_dir -c $seq_dir/calib_$downsampling.000000.txt -o $klg_dir/$downsampling.klg -s 10922.66666
     (( ID++ ))
 done
-ID=10
-echo $ID
-srun -c1 --mem=8G /imatge/icaminal/workspace/adapt/KITTY/kitty_to_png/build/pngtoklg -w ~/datasets/kitty/generated/$ID/ -c ~/datasets/kitty/generated/${ID}/calib_$downsampling.000000.txt -o ~/datasets/kitty/generated/${ID}_$downsampling/$downsampling.klg -s 10922.66666
-ID=22
-echo $ID
-srun -c1 --mem=8G /imatge/icaminal/workspace/adapt/KITTY/kitty_to_png/build/pngtoklg -w ~/datasets/kitty/generated/$ID/ -c ~/datasets/kitty/generated/${ID}/calib_$downsampling.000000.txt -o ~/datasets/kitty/generated/${ID}_$downsampling/$downsampling.klg -s 10922.66666
 
 echo all done!
