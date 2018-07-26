@@ -144,7 +144,6 @@ bool RawLogReader::grabNext(bool & returnVal, int & currentFrame)
         ThreadDataPack::get().trackerFrame.assignAndNotifyAll(currentFrame);
         return true;
     }
-  exit(0);
 	returnVal = false;
 	return false;
 }
