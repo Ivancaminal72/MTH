@@ -38,11 +38,37 @@
 This script computes the absolute trajectory error from the ground truth
 trajectory and the estimated trajectory.
 """
-
+from __future__ import print_function
 import sys
 import numpy
 import argparse
 import associate
+
+def read_file_list(filename):
+    """
+    Reads a trajectory from a text file.
+
+    File format:
+    The file format is "stamp d1 d2 d3 ...", where stamp denotes the time stamp (to be matched)
+    and "d1 d2 d3.." is arbitary data (e.g., a 3D position and 3D orientation) associated to this timestamp.
+
+    Input:
+    filename -- File name
+
+    Output:
+    dict -- dictionary of (stamp,data) tuples
+
+    """
+    try:
+        file = open(filename)
+    except IOError as e:
+        print (";;;;;;", end='')
+        exit(0)
+    data = file.read()
+    lines = data.replace(","," ").replace("\t"," ").split("\n")
+    list = [[v.strip() for v in line.split(" ") if v.strip()!=""] for line in lines if len(line)>0 and line[0]!="#"]
+    list = [(float(l[0]),l[1:]) for l in list if len(l)>1]
+    return dict(list)
 
 def align(model,data):
     """Align two trajectories using the method of Horn (closed-form).
@@ -103,17 +129,17 @@ def plot_traj(ax,stamps,traj,style,color,label):
             y.append(traj[i][1])
             z.append(traj[i][2])
         elif len(x)>0:
-            # ax.plot(x,y,style,color=color,label=label)
-            ax.scatter(x, y, z, c=color)
+            ax.plot(x,y,style,color=color,label=label)
+            #ax.scatter(x, y, z, c=color) # 3D
             label=""
             x=[]
             y=[]
             z=[]
         last= stamps[i]
     if len(x)>0:
-        # ax.plot(x,y,style,color=color,label=label)
-        # ax.plot(x,z,style,color=color,label=label)
-        ax.scatter(x, y, z, c=color)
+        #ax.plot(x,y,style,color=color,label=label) #TUM
+        ax.plot(x,z,style,color=color,label=label) #KITTY
+        #ax.scatter(x, y, z, c=color) # 3D
 
 
 if __name__=="__main__":
@@ -132,8 +158,8 @@ if __name__=="__main__":
     parser.add_argument('--verbose', help='print all evaluation data (otherwise, only the RMSE absolute translational error in meters after alignment will be printed)', action='store_true')
     args = parser.parse_args()
 
-    first_list = associate.read_file_list(args.first_file)
-    second_list = associate.read_file_list(args.second_file)
+    first_list = read_file_list(args.first_file)
+    second_list = read_file_list(args.second_file)
 
     matches = associate.associate(first_list, second_list,float(args.offset),float(args.max_difference))
     if len(matches)<2:
@@ -156,17 +182,24 @@ if __name__=="__main__":
     second_xyz_full_aligned = rot * second_xyz_full + trans
 
     if args.verbose:
-        print "compared_pose_pairs %d pairs"%(len(trans_error))
+        print ("%d;"%(len(trans_error)), end='')
 
-        print "absolute_translational_error.rmse %fm"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error))
-        print "absolute_translational_error.mean %fm"%numpy.mean(trans_error)
-        print "absolute_translational_error.median %fm"%numpy.median(trans_error)
-        print "absolute_translational_error.std %fm"%numpy.std(trans_error)
-        print "absolute_translational_error.min %fm"%numpy.min(trans_error)
-        print "absolute_translational_error.max %fm"%numpy.max(trans_error)
+        print ("%f;"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)), end='')
+        print ("%f;"%numpy.mean(trans_error), end='')
+        print ("%f;"%numpy.median(trans_error), end='')
+        print ("%f;"%numpy.std(trans_error), end='')
+        print ("%f;"%numpy.min(trans_error), end='')
+        print ("%f"%numpy.max(trans_error), end='')
 
     else:
-        print "%f"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error))
+        print ("compared_pose_pairs %d pairs"%(len(trans_error)))
+
+        print ("absolute_translational_error.rmse %f"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)))
+        print ("absolute_translational_error.mean %f"%numpy.mean(trans_error))
+        print ("absolute_translational_error.median %f"%numpy.median(trans_error))
+        print ("absolute_translational_error.std %f"%numpy.std(trans_error))
+        print ("absolute_translational_error.min %f"%numpy.min(trans_error))
+        print ("absolute_translational_error.max %f"%numpy.max(trans_error))
 
     if args.save_associations:
         file = open(args.save_associations,"w")
@@ -180,26 +213,27 @@ if __name__=="__main__":
 
     if args.plot:
         import matplotlib
-        # matplotlib.use('Agg')
+        #matplotlib.use('Agg') # save without show
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pylab as pylab
         from matplotlib.patches import Ellipse
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        # ax = fig.add_subplot(111)
+        ax = fig.add_subplot(111) #2D
+        #ax = fig.add_subplot(111, projection='3d') # 3D
         plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
         plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
 
         label="difference"
-        # for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
-        #     # ax.plot([x1,x2],[y1,y2],'-',color="red",label=label)
-        #     ax.plot([x1,x2],[z1,z2],'-',color="red",label=label)
-        #     label=""
+        # 2D
+        for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
+            #ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
+            ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
+            label=""
 
         ax.legend()
 
         ax.set_xlabel('x [m]')
-        ax.set_ylabel('y [m]')
-        plt.show()
-        # plt.savefig(args.plot,dpi=90)
+        ax.set_ylabel('z [m]') #Kitty 2D
+        plt.show() # 3D comentar
+        #plt.savefig(args.plot,dpi=90)
