@@ -205,7 +205,6 @@ Transform Registration::computeTransformationMod(
 	{
 		guess = guess.to3DoF();
 	}
-
 	Transform t = computeTransformationImpl(from, to, guess, info);
 
 	if(child_)

@@ -89,8 +89,10 @@ int main(int argc, char * argv[])
 	ParametersMap parameters;
 	std::string path;
 	std::string output;
-	std::string outputName = "rtabmap";
+	std::string dots;
 	std::string calFile;
+	std::string image_name, depth_name;
+	std::string pathTimes;
 	bool quiet = false;
 	if(argc < 2)
 	{
@@ -104,23 +106,36 @@ int main(int argc, char * argv[])
 			{
 				output = argv[++i];
 			}
-			else if(std::strcmp(argv[i], "--output_name") == 0)
+			else if(std::strcmp(argv[i], "--outname") == 0)
 			{
-				outputName = argv[++i];
+				dots = argv[++i];
+			}
+			else if(std::strcmp(argv[i], "--imagename") == 0)
+			{
+				image_name = argv[++i];
+			}
+			else if(std::strcmp(argv[i], "--depthname") == 0)
+			{
+				depth_name = argv[++i];
 			}
 			else if(std::strcmp(argv[i], "--quiet") == 0)
 			{
 				quiet = true;
 			}
-			else if(std::strcmp(argv[i], "--calib") == 0)
+			else if(std::strcmp(argv[i], "--calibfile") == 0)
 			{
 				calFile = argv[++i];
+			}
+			else if(std::strcmp(argv[i], "--times") == 0)
+			{
+				pathTimes = argv[++i];
 			}
 		}
 		parameters = Parameters::parseArguments(argc, argv);
 		path = argv[argc-1];
 		path = uReplaceChar(path, '~', UDirectory::homeDir());
 		path = uReplaceChar(path, '\\', '/');
+		std::cout<<"PATH"<<path<<std::endl;
 		if(output.empty())
 		{
 			output = path;
@@ -137,8 +152,9 @@ int main(int argc, char * argv[])
 	std::string seq = uSplit(path, '/').back();
 	// std::string pathRgbImages  = path+"/rgb_sync";
 	// std::string pathDepthImages = path+"/depth_sync";
-	std::string pathRgbImages  = path+"/visible";
-	std::string pathDepthImages = path+"/depth";
+
+	std::string pathRgbImages  = path+"/"+image_name;
+	std::string pathDepthImages = path+"/"+depth_name;
 	std::string pathGt = path+"/groundtruth.txt";
 	if(!UFile::exists(pathGt))
 	{
@@ -157,13 +173,13 @@ int main(int argc, char * argv[])
 			"   RGB path:        %s\n"
 			"   Depth path:      %s\n"
 			"   Output:          %s\n"
-			"   Output name:     %s\n",
+			"   Times file:      %s\n",
 			seq.c_str(),
 			path.c_str(),
 			pathRgbImages.c_str(),
 			pathDepthImages.c_str(),
 			output.c_str(),
-			outputName.c_str());
+		  pathTimes.c_str());
 	if(!pathGt.empty())
 	{
 		printf("   groundtruth.txt: %s\n", pathGt.c_str());
@@ -184,7 +200,6 @@ int main(int argc, char * argv[])
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	// float depthFactor = 5.0f;
 	float depthFactor = 0.546133f;
-	calFile = path+"/"+calFile;
 	std::cout<<"CAL:"<<calFile.c_str()<<std::endl;
 	std::ifstream file(calFile.c_str());
 	std::string line;
@@ -198,8 +213,8 @@ int main(int argc, char * argv[])
 	std::getline(file, line);
 	if(!file.eof()) sscanf(line.c_str(), "%lg", &scale);
 	scale = 1.0/scale;
-	std::cout<<"HEEY0:"<<fx<<" "<<fy<<" "<<cx<<" "<<cy<<" "<<(int) w<<" "<<(int) h<<" "<<std::endl;
-	model = CameraModel(outputName+"_calib", fx, fy, cx, cy, opticalRotation, 0, cv::Size((int) w,(int) h));
+	std::cout<<"INTRINSICS:"<<fx<<" "<<fy<<" "<<cx<<" "<<cy<<" "<<(int) w<<" "<<(int) h<<" "<<std::endl;
+	model = CameraModel("rtabmap_calib", fx, fy, cx, cy, opticalRotation, 0, cv::Size((int) w,(int) h));
 	// if(sequenceName.find("freiburg1") != std::string::npos)
 	// {
 	// 	model = CameraModel(outputName+"_calib", 517.3, 516.5, 318.6, 255.3, opticalRotation, 0, cv::Size(640,480));
@@ -223,7 +238,8 @@ int main(int argc, char * argv[])
 				depthFactor,
 				0.0f,
 				opticalRotation), parameters);
-	((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
+	if (pathTimes.empty()) ((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
+	else ((CameraRGBDImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
 	if(!pathGt.empty())
 	{
 		((CameraRGBDImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 1);
@@ -235,10 +251,14 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
 	Parameters::parse(parameters, Parameters::kOdomStrategy(), odomStrategy);
 	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
-	std::string databasePath = output+"/"+outputName+".db";
+
+	// assuming source is 10 Hz
+	int mapUpdate = detectionRate>0?10 / detectionRate:1;
+
+	std::string databasePath = output+"/rtabmap.db";
 	UFile::erase(databasePath);
 	// if(cameraThread.camera()->init(path, outputName+"_calib"))
-	if(cameraThread.camera()->init(output, outputName+"_calib"))
+	if(cameraThread.camera()->init(output, "rtabmap_calib"))
 	{
 		int totalImages = (int)((CameraRGBDImages*)cameraThread.camera())->filenames().size();
 
@@ -353,6 +373,8 @@ int main(int argc, char * argv[])
 					rmse = rtabmap.getStatistics().data().at(Statistics::kGtTranslational_rmse());
 				}
 
+				if(odomInfo.reg.inliers == 0 && iteration != 1) return 3;
+
 				if(rmse >= 0.0f)
 				{
 					//printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm, noise stddev=%fm %frad",
@@ -398,7 +420,7 @@ int main(int argc, char * argv[])
 		{
 			stamps.insert(std::make_pair(iter->first, iter->second.getStamp()));
 		}
-		std::string pathTrajectory = output+"/"+outputName+"_poses.txt";
+		std::string pathTrajectory = output+"/"+dots;
 		if(poses.size() && graph::exportPoses(pathTrajectory, 1, poses, links, stamps))
 		{
 			printf("Saving %s... done!\n", pathTrajectory.c_str());
@@ -462,7 +484,7 @@ int main(int argc, char * argv[])
 			printf("   rotational_rmse=      %f deg\n", rotational_rmse);
 
 			FILE * pFile = 0;
-			std::string pathErrors = output+"/"+outputName+"_rmse.txt";
+			std::string pathErrors = output+"/rtabmap_rmse.txt";
 			pFile = fopen(pathErrors.c_str(),"w");
 			if(!pFile)
 			{
@@ -489,9 +511,9 @@ int main(int argc, char * argv[])
 		UERROR("Camera init failed!");
 	}
 
-	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", (output+"/"+outputName+".db").c_str());
+	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", (output+"/rtabmap.db").c_str());
 	printf("Do:\n"
-			" $ rtabmap-databaseViewer %s\n\n", (output+"/"+outputName+".db").c_str());
+			" $ rtabmap-databaseViewer %s\n\n", (output+"/rtabmap.db").c_str());
 
 	return 0;
 }

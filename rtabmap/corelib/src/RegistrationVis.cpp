@@ -654,7 +654,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					validKeypoints3D.resize(oi);
 					kptsFrom = validKeypoints;
 					kptsFrom3D = validKeypoints3D;
-					
+
 					if(orignalWordsFromIds.size())
 					{
 					validKeypointsIds.resize(oi);

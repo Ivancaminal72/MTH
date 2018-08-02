@@ -84,10 +84,11 @@ bool resetDir(bf::path p)
     try
     {
         if(bf::exists(p) && bf::is_directory(p) && !bf::is_empty(p)) {
-            char op;
-            printf("Remove %s? [y/n]\n", p.c_str());
-            cin>>op;
-            if(op == 'y') bf::remove_all(p);
+            // char op;
+            // printf("Remove %s? [y/n]\n", p.c_str());
+            // cin>>op;
+            // if(op == 'y')
+            bf::remove_all(p);
         }
         if(bf::exists(p) && bf::is_directory(p) && bf::is_empty(p)) return true;
         else if(createDirs(p)) return true;
@@ -210,7 +211,7 @@ int main(int argc, char **argv)
     vector<int> mandatories={ 'r', 'd', 'i', 's', 'o'};
     vector<int> flags=mandatories;
     ostringstream msg;
-    
+
     while ((c = getopt_long(argc, argv, short_opt, long_opt, &longindex)) != -1)
     {
         switch (c)
@@ -314,11 +315,11 @@ int main(int argc, char **argv)
     bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
     bf::path Itxt = outPath.native()+sequence+"/infrared.txt";
     bf::path Atxt = outPath.native()+sequence+"/associations.txt";
-    
+
     if(!verifyDir(dataPath) or !hasFiles(dataPath,"")) parse_error();
     if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".bin")) parse_error();
     if(!verifyDir(cameraPath) or !hasFiles(cameraPath,".png")) parse_error();
-    
+
     if(!verifyDir(outPath)) parse_error("Error creating save path");
     bf::path outCpath = outPath.native()+sequence+"/visible/";
     bf::path outDpath = outPath.native()+sequence+"/depth/";
@@ -513,4 +514,3 @@ int main(int argc, char **argv)
 
     cout<<endl<<endl<<"Transformation complete!"<<endl;
 }
-
