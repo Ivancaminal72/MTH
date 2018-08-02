@@ -5,5 +5,6 @@ adapt/KITTY/_kitti-pcl/
 
 **/build/
 **/deps/
+**/bin/
 **/*.user
 **/*.pyc
