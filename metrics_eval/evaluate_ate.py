@@ -137,8 +137,8 @@ def plot_traj(ax,stamps,traj,style,color,label):
             z=[]
         last= stamps[i]
     if len(x)>0:
-        #ax.plot(x,y,style,color=color,label=label) #TUM
-        ax.plot(x,z,style,color=color,label=label) #KITTY
+        ax.plot(x,y,style,color=color,label=label) #TUM
+        #ax.plot(x,z,style,color=color,label=label) #KITTY
         #ax.scatter(x, y, z, c=color) # 3D
 
 
@@ -213,7 +213,7 @@ if __name__=="__main__":
 
     if args.plot:
         import matplotlib
-        #matplotlib.use('Agg') # save without show
+        matplotlib.use('Agg') # save without show
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pylab as pylab
@@ -227,13 +227,14 @@ if __name__=="__main__":
         label="difference"
         # 2D
         for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
-            #ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
-            ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
+            ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
+            #ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
             label=""
 
         ax.legend()
 
         ax.set_xlabel('x [m]')
-        ax.set_ylabel('z [m]') #Kitty 2D
-        plt.show() # 3D comentar
-        #plt.savefig(args.plot,dpi=90)
+        #ax.set_ylabel('z [m]') #Kitty 2D
+        ax.set_ylabel('y [m]') #TUM 2D
+        #plt.show() # 3D comentar
+        plt.savefig(args.plot,dpi=90)
