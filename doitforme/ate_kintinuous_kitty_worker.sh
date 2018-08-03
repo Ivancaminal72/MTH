@@ -1,5 +1,5 @@
 #!/bin/bash
-downsampling=1
+downsampling=2
 path="/imatge/icaminal/datasets/kitty/generated"
 out_dir="/imatge/icaminal/results/kintinuous"
 out_file="$out_dir/ate_kitty_$downsampling.csv"
@@ -10,8 +10,8 @@ rm -f $out_file
 mkdir -p $out_dir
 
 for ((i=0;i<${#seq_a[@]};++i)); do
-	seq_dir=$path/${seq_a[i]}_${downsampling}
-	#seq_dir=$path/${seq_a[i]} #for downsampling2 us this (the script was thought later...)
+	#seq_dir=$path/${seq_a[i]}_${downsampling}
+	seq_dir=$path/${seq_a[i]} #for downsampling2 us this (the script was thought later...)
 	cd $seq_dir
 
     echo -e "\n\n Evaluating ate sequence: $seq_dir"

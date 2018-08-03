@@ -4,7 +4,7 @@ path="/imatge/icaminal/datasets/TUM_rgbd"
 seq_a=("rgbd_dataset_freiburg1_desk" 
 	 "rgbd_dataset_freiburg1_room" 
 	 "rgbd_dataset_freiburg2_desk")
-cal_a=("1" "1" "1" "2" "2")
+cal_a=("1" "1" "2")
 test_a=("" "-r" "-fod" "-fod -r" "-ri" "-fod -ri")
 dot_a=("orig")
 max_inlierdist=10
@@ -25,16 +25,16 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 		inlierdist=0.1
 		while true
 		do
-			out_name=rtabmap.poses.$inlierdist.${dot_a[j]}
+			out_name=rtabmap.poses.$inlierdist.${dot_a[j]}.od
 			printf "\n${dot_a[j]} "
 			printf "\nTrying inlier distance --> $inlierdist\n"
 
-			#Without loop closure
+			#With loop closure
 			srun-fast --mem=8GB -c 4 ./rgbd_dataset \
 			--output $out_dir \
 			--outname $out_name \
-			--imagename "rgb"\
-			--depthname "depth"\
+			--imagename "rgb_sync"\
+			--depthname "depth_sync"\
 			--calibfile $calib \
 			--poses ${dot_a[j]} \
 			--Rtabmap/PublishRAMUsage true \

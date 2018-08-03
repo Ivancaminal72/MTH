@@ -1,7 +1,8 @@
 #!/bin/bash
-downsampling=1
+downsampling=2
 path="/imatge/icaminal/datasets/kitty/generated"
-seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "22") 
+#seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "22") 
+seq_a=("00" ) 
 test_a=("" "-r" "-fod" "-fod -r" "-ri" "-fod -ri")
 dot_a=("i" "r" "if" "rf" "ri" "rif")
 
@@ -9,8 +10,8 @@ source ~/workspace/install/modules_kintinuous.sh
 cd /imatge/icaminal/workspace/Kintinuous/src/build
 
 for ((i=0;i<${#seq_a[@]};++i)); do
-	seq_dir=$path/${seq_a[i]}_${downsampling}
-	#seq_dir=$path/${seq_a[i]} #for downsampling2 us this (the script was thought later...)
+	#seq_dir=$path/${seq_a[i]}_${downsampling}
+	seq_dir=$path/${seq_a[i]} #for downsampling2 us this (the script was thought later...)
 	calib=$path/${seq_a[i]}/calib_${downsampling}.000000.txt.scaled
 	rm -fr $seq_dir/worker/
 	mkdir $seq_dir/worker/
