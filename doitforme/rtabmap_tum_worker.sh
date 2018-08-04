@@ -1,13 +1,22 @@
 #!/bin/bash
 downsampling=1
 path="/imatge/icaminal/datasets/TUM_rgbd"
-seq_a=("rgbd_dataset_freiburg1_desk" 
-	 "rgbd_dataset_freiburg1_room" 
-	 "rgbd_dataset_freiburg2_desk")
-cal_a=("1" "1" "2")
+
+#seq_a=("rgbd_dataset_freiburg1_desk" 
+#	 "rgbd_dataset_freiburg1_room" 
+#	 "rgbd_dataset_freiburg2_desk")
+#cal_a=("1" "1" "2")
+#inlier_dist_a=("0.2" "0.1" "0.1") 
+
+seq_a=("rgbd_dataset_freiburg1_desk" )
+cal_a=("1")
+inlier_dist_a=("0.02") 
+
 test_a=("" "-r" "-fod" "-fod -r" "-ri" "-fod -ri")
-dot_a=("orig")
-max_inlierdist=10
+dot_a=("f2m" "f2f")
+odom_strat=(0 1)
+
+max_inlierdist=9
 
 source ~/workspace/install/modules_rtabmap.sh
 cd /imatge/icaminal/workspace/rgbd-dataset_rtab-map/build
@@ -22,7 +31,7 @@ for ((i=0;i<${#seq_a[@]};++i)); do
     echo -e "\n\n Running sequence: $gen_dir"
 
 	for ((j=0;j<${#dot_a[@]};++j)); do
-		inlierdist=0.1
+		inlierdist=${inlier_dist_a[i]}
 		while true
 		do
 			out_name=rtabmap.poses.$inlierdist.${dot_a[j]}.od
@@ -44,9 +53,11 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--Reg/Strategy 0 \
 			--GFTT/QualityLevel 0.001 \
 			--GFTT/MinDistance 7 \
-			--Odom/Strategy 0 \
+			--Odom/Strategy ${odom_strat[j]} \
 			--OdomF2M/MaxSize 3000 \
 			--Kp/MaxFeatures 750 \
+			--Vis/FeatureType 0 \
+			--Vis/CorType 0 \
 			--Vis/MaxFeatures 1500 \
 			--Vis/EstimationType 0 \
 			--Vis/InlierDistance $inlierdist \
@@ -67,7 +78,7 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 				break
 			elif [[ $retVal -eq 3 && $(echo "$inlierdist $max_inlierdist" | awk '{printf ($1<=$2)}') -eq 1 ]]
 			then
-				inlierdist=$(echo "$inlierdist 0.1" | awk '{printf "%.1f", $1+$2}')
+				inlierdist=$(echo "$inlierdist 0.02" | awk '{printf "%.1f", $1+$2}')
 				rm -f $out_dir/$out_name
 			elif [[ $(echo "$inlierdist $max_inlierdist" | awk '{printf ($1>$2)}') -eq 1 ]]
 			then 

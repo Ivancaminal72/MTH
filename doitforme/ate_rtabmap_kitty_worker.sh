@@ -23,7 +23,7 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 		
 		printf "\n${seq_a[i]};" | tee -a $out_file		
 		printf "${dot_a[j]};" | tee -a $out_file
-		printf "${inlier_dist_a[j]};" | tee -a $out_file
+		printf "${inlier_dist_a[i]};" | tee -a $out_file
 
 		#Without loop closure
 		python ~/workspace/metrics_eval/evaluate_ate.py --verbose /imatge/icaminal/datasets/kitty/poses/${seq_a[i]}_freiburg.txt ./${in_name} --plot plot.${dot_a[j]}.png | tee -a $out_file
