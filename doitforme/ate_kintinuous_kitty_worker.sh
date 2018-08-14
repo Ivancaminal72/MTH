@@ -18,8 +18,8 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 
 	for ((j=0;j<${#dot_a[@]};++j)); do
 		
-		in_name="${downsampling}.klg.10922.poses.${dot_a[j]}"
-		
+		in_name="${downsampling}.klg.10922.poses.${dot_a[j]}"		
+
 		printf "\n${seq_a[i]};" | tee -a $out_file		
 		printf "${dot_a[j]};" | tee -a $out_file
 
@@ -30,7 +30,7 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 		printf "${dot_a[j]}.od;" | tee -a $out_file
 
 		#With loop closure
-		python ~/workspace/metrics_eval/evaluate_ate.py --verbose /imatge/icaminal/datasets/kitty/poses/${seq_a[i]}_freiburg.txt ./${in_name}.od --plot plot.${dot_a[j]}.od.png | tee -a $out_file
+		python ~/workspace/metrics_eval/evaluate_ate.py --verbose --scale 20 /imatge/icaminal/datasets/kitty/poses/${seq_a[i]}_freiburg.txt ./${in_name}.od --plot plot.${dot_a[j]}.od.png | tee -a $out_file
 
 	done
 done

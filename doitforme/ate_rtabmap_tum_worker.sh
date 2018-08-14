@@ -3,14 +3,11 @@ path="/imatge/icaminal/datasets/TUM_rgbd"
 out_dir="/imatge/icaminal/results/rtabmap"
 out_file="$out_dir/ate_tum.csv"
 
-#seq_a=( "rgbd_dataset_freiburg1_desk" 
-#	    "rgbd_dataset_freiburg1_room" 
-#	    "rgbd_dataset_freiburg2_desk" )
-#inlier_dist_a=("0.2" "0.1" "0.1")
-
-seq_a=( "rgbd_dataset_freiburg1_desk")
-inlier_dist_a=("0.2") 
-dot_a=("f2m" "f2f" "fovis" "visio2" "dvo-slam" "orb_slam2")
+seq_a=( "rgbd_dataset_freiburg1_desk" 
+	    "rgbd_dataset_freiburg1_room" 
+	    "rgbd_dataset_freiburg2_desk" )
+inlier_dist_a=("0.1" "0.1" "0.1") 
+dot_a=("f2m")
 
 rm -f $out_file
 mkdir -p $out_dir

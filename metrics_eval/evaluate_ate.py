@@ -63,6 +63,7 @@ def read_file_list(filename):
         file = open(filename)
     except IOError as e:
         print (";;;;;;", end='')
+        print (filename, end='')
         exit(0)
     data = file.read()
     lines = data.replace(","," ").replace("\t"," ").split("\n")
@@ -137,8 +138,8 @@ def plot_traj(ax,stamps,traj,style,color,label):
             z=[]
         last= stamps[i]
     if len(x)>0:
-        ax.plot(x,y,style,color=color,label=label) #TUM
-        #ax.plot(x,z,style,color=color,label=label) #KITTY
+        # ax.plot(x,y,style,color=color,label=label) #TUM
+        ax.plot(x,z,style,color=color,label=label) #KITTY
         #ax.scatter(x, y, z, c=color) # 3D
 
 
@@ -227,14 +228,14 @@ if __name__=="__main__":
         label="difference"
         # 2D
         for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
-            ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
-            #ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
+            # ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
+            ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
             label=""
 
         ax.legend()
 
         ax.set_xlabel('x [m]')
-        #ax.set_ylabel('z [m]') #Kitty 2D
-        ax.set_ylabel('y [m]') #TUM 2D
-        #plt.show() # 3D comentar
+        ax.set_ylabel('z [m]') #Kitty 2D
+        # ax.set_ylabel('y [m]') #TUM 2D
+        # plt.show() # 3D comentar
         plt.savefig(args.plot,dpi=90)

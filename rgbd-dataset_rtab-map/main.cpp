@@ -198,8 +198,9 @@ int main(int argc, char * argv[])
 	CameraModel model;
 	std::string sequenceName = UFile(path).getName();
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
-	// float depthFactor = 5.0f;
-	float depthFactor = 0.546133f;
+	//float depthFactor = 5.0f; //TUM
+	float depthFactor = 0.546133f; //Kitty
+	depthFactor = depthFactor*20; //Scaled
 	std::cout<<"CAL:"<<calFile.c_str()<<std::endl;
 	std::ifstream file(calFile.c_str());
 	std::string line;
@@ -373,6 +374,7 @@ int main(int argc, char * argv[])
 					rmse = rtabmap.getStatistics().data().at(Statistics::kGtTranslational_rmse());
 				}
 
+				//TRY another inlier distance
 				if(odomInfo.reg.inliers == 0 && iteration != 1) return 3;
 
 				if(rmse >= 0.0f)

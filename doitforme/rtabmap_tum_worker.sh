@@ -2,19 +2,14 @@
 downsampling=1
 path="/imatge/icaminal/datasets/TUM_rgbd"
 
-#seq_a=("rgbd_dataset_freiburg1_desk" 
-#	 "rgbd_dataset_freiburg1_room" 
-#	 "rgbd_dataset_freiburg2_desk")
-#cal_a=("1" "1" "2")
-#inlier_dist_a=("0.2" "0.1" "0.1") 
-
-seq_a=("rgbd_dataset_freiburg1_desk" )
-cal_a=("1")
-inlier_dist_a=("0.02") 
+seq_a=("rgbd_dataset_freiburg1_desk" 
+	 "rgbd_dataset_freiburg1_room" 
+	 "rgbd_dataset_freiburg2_desk")
+cal_a=("1" "1" "2")
+inlier_dist_a=("0.1" "0.1" "0.1") 
 
 test_a=("" "-r" "-fod" "-fod -r" "-ri" "-fod -ri")
-dot_a=("f2m" "f2f")
-odom_strat=(0 1)
+dot_a=("f2m")
 
 max_inlierdist=9
 
@@ -53,10 +48,10 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--Reg/Strategy 0 \
 			--GFTT/QualityLevel 0.001 \
 			--GFTT/MinDistance 7 \
-			--Odom/Strategy ${odom_strat[j]} \
+			--Odom/Strategy 0 \
 			--OdomF2M/MaxSize 3000 \
 			--Kp/MaxFeatures 750 \
-			--Vis/FeatureType 0 \
+			--Kp/DetectorStrategy 0 \
 			--Vis/CorType 0 \
 			--Vis/MaxFeatures 1500 \
 			--Vis/EstimationType 0 \
@@ -78,7 +73,7 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 				break
 			elif [[ $retVal -eq 3 && $(echo "$inlierdist $max_inlierdist" | awk '{printf ($1<=$2)}') -eq 1 ]]
 			then
-				inlierdist=$(echo "$inlierdist 0.02" | awk '{printf "%.1f", $1+$2}')
+				inlierdist=$(echo "$inlierdist 0.02" | awk '{printf "%f", $1+$2}')
 				rm -f $out_dir/$out_name
 			elif [[ $(echo "$inlierdist $max_inlierdist" | awk '{printf ($1>$2)}') -eq 1 ]]
 			then 

@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
     std::cout << "RGB: " << vec_info.back().second.second << std::endl;
     std::cout << "scale: " << g_dScale << std::endl;
 
-    convertToKlg(vec_info, strKlgFileName);
+    //convertToKlg(vec_info, strKlgFileName);
 
     std::ifstream file(strCalib.c_str());
     std::string line;
@@ -322,8 +322,8 @@ int main(int argc, char* argv[])
     //Save kintinuous calib file
     strCalib = strCalib+".scaled";
     ofstream outKintCalib(strCalib.c_str());
-    outKintCalib<<fx*(1/g_dScale)<<" ";
-    outKintCalib<<fy*(1/g_dScale)<<" ";
+    outKintCalib<<fx<<" ";
+    outKintCalib<<fy<<" ";
     outKintCalib<<cx<<" ";
     outKintCalib<<cy<<" ";
     outKintCalib<<w<<" ";

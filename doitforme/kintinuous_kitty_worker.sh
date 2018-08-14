@@ -24,13 +24,13 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 		printf "\n${dot_a[j]} "
 
 		#Without loop closure
-		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/${downsampling}.klg.10922 ${test_a[j]} -fl -c $calib -t 16 > $seq_dir/worker/out.${dot_a[j]}.txt 2> $seq_dir/worker/err.${dot_a[j]}.txt
+		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/${downsampling}.klg.10922 ${test_a[j]} -c $calib -t 16 > $seq_dir/worker/out.${dot_a[j]}.txt 2> $seq_dir/worker/err.${dot_a[j]}.txt
 		mv $seq_dir/${downsampling}.klg.10922.poses $seq_dir/${downsampling}.klg.10922.poses.${dot_a[j]}
 
 		printf "\n${dot_a[j]}.od "
 
 		#With loop closure
-		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/${downsampling}.klg.10922 ${test_a[j]} -od -fl -c $calib -t 16 > $seq_dir/worker/out.${dot_a[j]}.od.txt 2> $seq_dir/worker/err.${dot_a[j]}.od.txt
+		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/${downsampling}.klg.10922 ${test_a[j]} -od -c $calib -t 16 > $seq_dir/worker/out.${dot_a[j]}.od.txt 2> $seq_dir/worker/err.${dot_a[j]}.od.txt
 		mv $seq_dir/${downsampling}.klg.10922.poses $seq_dir/${downsampling}.klg.10922.poses.${dot_a[j]}.od
 
 	done

@@ -2,9 +2,11 @@
 path="/imatge/icaminal/datasets/TUM_rgbd"
 out_dir="/imatge/icaminal/results/kintinuous"
 out_file="$out_dir/ate_tum.csv"
-seq_a=( "rgbd_dataset_freiburg1_desk" 
+seq_a=("rgbd_dataset_freiburg1_360" 
+	 "rgbd_dataset_freiburg1_desk" 
 	 "rgbd_dataset_freiburg1_room" 
-	 "rgbd_dataset_freiburg2_desk" )
+	 "rgbd_dataset_freiburg2_desk" 
+	 "rgbd_dataset_freiburg2_large_no_loop")
 dot_a=("i" "r" "if" "rf" "ri" "rif")
 
 rm -f $out_file
