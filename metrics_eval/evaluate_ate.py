@@ -222,8 +222,7 @@ if __name__=="__main__":
         fig = plt.figure()
         ax = fig.add_subplot(111) #2D
         #ax = fig.add_subplot(111, projection='3d') # 3D
-        plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
-        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
+        ax.set_aspect('equal',adjustable='datalim')
 
         label="difference"
         # 2D
@@ -232,10 +231,36 @@ if __name__=="__main__":
             ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
             label=""
 
-        ax.legend()
+        plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
+        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
 
+        ax.legend()
         ax.set_xlabel('x [m]')
         ax.set_ylabel('z [m]') #Kitty 2D
         # ax.set_ylabel('y [m]') #TUM 2D
         # plt.show() # 3D comentar
         plt.savefig(args.plot,dpi=90)
+
+        ##########################--SET ZOOM--#################################
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111) #2D
+        #ax = fig.add_subplot(111, projection='3d') # 3D
+        ax.set_aspect('auto')
+
+        label="difference"
+        # 2D
+        for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
+            # ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
+            ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
+            label=""
+
+        plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
+        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
+
+        ax.legend()
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('z [m]') #Kitty 2D
+        # ax.set_ylabel('y [m]') #TUM 2D
+        # plt.show() # 3D comentar
+        plt.savefig("zoom."+args.plot,dpi=90)

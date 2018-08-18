@@ -161,7 +161,8 @@ bool inline PangoVis::process()
 {
     TICK(threadIdentifier);
 
-    if(pangolin::ShouldQuit() || status.Get().compare("Finished") == 0)
+    //if(pangolin::ShouldQuit() || status.Get().compare("Finished") == 0)
+    if(pangolin::ShouldQuit())
     {
         MainController::controller->shutdown();
         return false;

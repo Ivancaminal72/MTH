@@ -433,7 +433,7 @@ int main(int argc, char **argv)
         //Load color images
         color = cv::imread((*itPng).c_str(), IMREAD_UNCHANGED);
         if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"\n");
-        if(isColorCamera) cv::cvtColor(color, color, COLOR_BGR2RGB);
+        //if(isColorCamera) cv::cvtColor(color, color, COLOR_BGR2RGB);
 
         //Downsample color images
         if(dfactor != 1) cv::resize(color.clone(), color, Size(), dfactor, dfactor, cv::INTER_LINEAR);

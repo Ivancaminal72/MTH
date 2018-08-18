@@ -93,6 +93,7 @@ int main(int argc, char * argv[])
 	std::string calFile;
 	std::string image_name, depth_name;
 	std::string pathTimes;
+	float scale_depth = 1;
 	bool quiet = false;
 	if(argc < 2)
 	{
@@ -129,6 +130,10 @@ int main(int argc, char * argv[])
 			else if(std::strcmp(argv[i], "--times") == 0)
 			{
 				pathTimes = argv[++i];
+			}
+			else if(std::strcmp(argv[i], "--scale") == 0)
+			{
+				scale_depth = atof(argv[++i]);
 			}
 		}
 		parameters = Parameters::parseArguments(argc, argv);
@@ -200,7 +205,7 @@ int main(int argc, char * argv[])
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	//float depthFactor = 5.0f; //TUM
 	float depthFactor = 0.546133f; //Kitty
-	depthFactor = depthFactor*20; //Scaled
+	depthFactor = depthFactor*scale_depth; //Scaled
 	std::cout<<"CAL:"<<calFile.c_str()<<std::endl;
 	std::ifstream file(calFile.c_str());
 	std::string line;
@@ -486,7 +491,7 @@ int main(int argc, char * argv[])
 			printf("   rotational_rmse=      %f deg\n", rotational_rmse);
 
 			FILE * pFile = 0;
-			std::string pathErrors = output+"/rtabmap_rmse.txt";
+			std::string pathErrors = output+"/rmse."+dots+".txt";
 			pFile = fopen(pathErrors.c_str(),"w");
 			if(!pFile)
 			{
@@ -513,9 +518,9 @@ int main(int argc, char * argv[])
 		UERROR("Camera init failed!");
 	}
 
-	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", (output+"/rtabmap.db").c_str());
+	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", (output+"/database."+dots+".db").c_str());
 	printf("Do:\n"
-			" $ rtabmap-databaseViewer %s\n\n", (output+"/rtabmap.db").c_str());
+			" $ rtabmap-databaseViewer %s\n\n", (output+"/database."+dots+".db").c_str());
 
 	return 0;
 }

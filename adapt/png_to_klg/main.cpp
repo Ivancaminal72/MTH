@@ -247,7 +247,7 @@ int main(int argc, char* argv[])
                 break;
         }
     }
-    if(option_count < 2)
+    if(option_count < 1)
     {
         fprintf(stderr,
             "Usage: ./pngtoklg -w (working directory) -o (klg file name)\n"
@@ -264,7 +264,7 @@ int main(int argc, char* argv[])
 
 
 
-    if(!arg_o) strKlgFileName=strWorkingDir+"log_"+to_string((int)g_dScale)+".klg";
+    if(!arg_o) strKlgFileName=strWorkingDir+"/log_"+to_string((int)g_dScale)+".klg";
     else strKlgFileName = strKlgFileName+"."+to_string((int)g_dScale);
 
     /// Change working directory
@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
     std::cout << "RGB: " << vec_info.back().second.second << std::endl;
     std::cout << "scale: " << g_dScale << std::endl;
 
-    //convertToKlg(vec_info, strKlgFileName);
+    convertToKlg(vec_info, strKlgFileName);
 
     std::ifstream file(strCalib.c_str());
     std::string line;
