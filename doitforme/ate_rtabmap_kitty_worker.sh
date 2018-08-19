@@ -6,12 +6,9 @@ out_dir="/imatge/icaminal/results/rtabmap"
 out_file="$out_dir/ate_kitty_${downsampling}_gftt_brief.csv" #gftt/brief
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10") 
 #inlier_dist_a=("0.020" "0.155" "0.025" "0.035" "0.030" "0.020" "0.120" "0.015" "0.045" "0.095" "0.015") #SCALED gftt/brief
-inlier_dist_a=("0.4" "3.2" "0.6" "0.7" "0.7" "0.5" "6.0" "0.3" "1.3" "1.9" "0.4") #gftt/brief
-
-#old -color -quality
-#inlier_dist_a=("4.2" "8.0" "1.0" "0.4" "0.5" "0.5" "0.5" "0.2" "0.4" "0.2") #orig
-#inlier_dist_a=("0.4" "0.8" "0.1" "0.04" "0.12" "0.04" "0.04" "0.02" "0.04" "0.1" "0.02") #SCALED surf (corr)
-#inlier_dist_a=("8.0" "3.3" "1.9" "0.6" "0.9" "0.8" "0.8" "0.3" "0.8" "0.3" "0.3") #surf
+#inlier_dist_a=("0.4" "3.2" "0.6" "0.7" "0.7" "0.5" "6.0" "0.3" "1.3" "1.9" "0.4") #gftt/brief
+#inlier_dist_a=("0.020" "0.090" "0.030" "0.015" "0.050" "0.020" "0.070" "0.015" "0.030" "0.060" "0.020") #SCALED gftt/brief downsampling2
+inlier_dist_a=("0.4" "1.6" "0.5" "0.3" "1.2" "0.4" "1.3" "0.3" "0.6" "1.0" "0.4") #gftt/brief downsampling2
 
 #seq_a=("07") 
 #inlier_dist_a=("0.5") #gftt/brief
@@ -24,7 +21,6 @@ mkdir -p $out_dir
 for ((i=0;i<${#seq_a[@]};++i)); do
 	#seq_dir=$path/${seq_a[i]}_rtab_${downsampling}_scaled #SCALED
 	seq_dir=$path/${seq_a[i]}_rtab_${downsampling}
-	#seq_dir=$path/${seq_a[i]} #for downsampling2 us this (the script was thought later...)
 	cd $seq_dir
 	rm -f ./*plot*
 

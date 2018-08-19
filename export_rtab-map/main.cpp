@@ -59,6 +59,8 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kError);
 
+	std::string output,dots = "test";
+
 	if(argc < 2)
 	{
 		showUsage();
@@ -75,6 +77,14 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--texture") == 0)
 		{
 			texture = true;
+		}
+		else if(std::strcmp(argv[i], "--output") == 0)
+		{
+			output = argv[++i];
+		}
+		else if(std::strcmp(argv[i], "--outname") == 0)
+		{
+			dots = argv[++i];
 		}
 	}
 
@@ -120,7 +130,7 @@ int main(int argc, char * argv[])
 		pcl::IndicesPtr indices(new std::vector<int>);
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
 				node.sensorData(),
-				4,           // image decimation before creating the clouds
+				1,           // ---> 4 DEFAULT <---- image decimation before creating the clouds
 				4.0f,        // maximum depth of the cloud
 				0.0f,
 				indices.get());
@@ -162,7 +172,7 @@ int main(int argc, char * argv[])
 			mergedClouds = util3d::voxelize(mergedClouds, 0.01f);
 
 			printf("Saving cloud.ply... (%d points)\n", (int)mergedClouds->size());
-			pcl::io::savePLYFile("cloud.ply", *mergedClouds);
+			pcl::io::savePLYFile(output+"/cloud."+dots+".ply", *mergedClouds);
 			printf("Saving cloud.ply... done!\n");
 		}
 		else
@@ -203,7 +213,7 @@ int main(int argc, char * argv[])
 				if(!texture)
 				{
 					printf("Saving mesh.ply...\n");
-					pcl::io::savePLYFile("mesh.ply", *mesh);
+					pcl::io::savePLYFile(output+"/mesh."+dots+".ply", *mesh);
 					printf("Saving mesh.ply... done!\n");
 				}
 				else
@@ -215,7 +225,7 @@ int main(int argc, char * argv[])
 							cameraPoses,
 							cameraModels,
 							cameraDepths,
-							3,
+							0.0f,					//---> 3 DEFAULT <---- // max camera distance to polygon to apply texture
 							0.0f,
 							0.0f,
 							50,
@@ -252,7 +262,7 @@ int main(int argc, char * argv[])
 						UASSERT(!textures.empty());
 						UASSERT(textureMesh->tex_materials.size() == 1);
 
-						std::string filePath = "mesh.jpg";
+						std::string filePath = output+"/texture."+dots+".jpg";
 						textureMesh->tex_materials[0].tex_file = filePath;
 						printf("Saving texture to %s.\n", filePath.c_str());
 						success = cv::imwrite(filePath, textures);
@@ -268,7 +278,7 @@ int main(int argc, char * argv[])
 						if(success)
 						{
 
-							std::string filePath = "mesh.obj";
+							std::string filePath = output+"/texture."+dots+".obj";
 							printf("Saving obj (%d vertices) to %s.\n", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, filePath.c_str());
 							success = pcl::io::saveOBJFile(filePath, *textureMesh) == 0;
 

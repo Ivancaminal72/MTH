@@ -94,6 +94,7 @@ int main(int argc, char * argv[])
 	std::string image_name, depth_name;
 	std::string pathTimes;
 	float scale_depth = 1;
+	float depthFactor = 0.546133f; //Kitty
 	bool quiet = false;
 	if(argc < 2)
 	{
@@ -134,6 +135,10 @@ int main(int argc, char * argv[])
 			else if(std::strcmp(argv[i], "--scale") == 0)
 			{
 				scale_depth = atof(argv[++i]);
+			}
+			else if(std::strcmp(argv[i], "--depthfactor") == 0)
+			{
+				depthFactor = atof(argv[++i]);
 			}
 		}
 		parameters = Parameters::parseArguments(argc, argv);
@@ -204,7 +209,7 @@ int main(int argc, char * argv[])
 	std::string sequenceName = UFile(path).getName();
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	//float depthFactor = 5.0f; //TUM
-	float depthFactor = 0.546133f; //Kitty
+	//float depthFactor = 0.546133f; //Kitty
 	depthFactor = depthFactor*scale_depth; //Scaled
 	std::cout<<"CAL:"<<calFile.c_str()<<std::endl;
 	std::ifstream file(calFile.c_str());
@@ -244,7 +249,8 @@ int main(int argc, char * argv[])
 				depthFactor,
 				0.0f,
 				opticalRotation), parameters);
-	if (pathTimes.empty()) ((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
+	if (std::strcmp(pathTimes.c_str(), "none") == 0) ((CameraRGBDImages*)cameraThread.camera())->setTimestamps(false, "", false);
+	else if (pathTimes.empty()) ((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	else ((CameraRGBDImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
 	if(!pathGt.empty())
 	{

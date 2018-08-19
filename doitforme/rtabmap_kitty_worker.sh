@@ -3,7 +3,7 @@ downsampling=2
 path="/imatge/icaminal/datasets/kitty/generated"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10")
 #inlier_dist_a=("0.4" "3.2" "0.6" "0.7" "0.7" "0.5" "6.0" "0.3" "1.3" "1.9" "0.4") #gftt/brief
-inlier_dist_a=("0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1") #gftt/brief downsampling2
+inlier_dist_a=("0.4" "1.6" "0.5" "0.3" "1.2" "0.4" "1.3" "0.3" "0.6" "1.0" "0.4") #gftt/brief downsampling2
 
 #inlier_dist_a=0.5
 #seq_a="07"
@@ -63,36 +63,36 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			> $out_dir/worker/out.${dot_a[j]}.txt \
 
 			
-#			#With loop closure
-#			printf "\n${dot_a[j]}.od "
-#			out_name=$out_name.od
-#			
-#			srun-fast --mem=8GB -c 4 ./rgbd_dataset \
-#			--output $out_dir \
-#			--outname $out_name \
-#			--imagename "visible"\
-#			--depthname "depth"\
-#			--calibfile $calib \
-#			--poses ${dot_a[j]} \
-#			--times /imatge/icaminal/datasets/kitty/sequences/${seq_a[i]}/times.txt \
-#			--scale ${depth_scale} \
-#			--Rtabmap/PublishRAMUsage true \
-#			--Rtabmap/DetectionRate 2 \
-#			--Rtabmap/CreateIntermediateNodes true \
-#			--RGBD/LinearUpdate 0 \
-#			--Reg/Strategy 0 \
-#			--GFTT/QualityLevel 0.0005\
-#			--GFTT/MinDistance $gftt_dist \
-#			--Odom/Strategy 0 \
-#			--OdomF2M/MaxSize 3000 \
-#			--Kp/MaxFeatures 750 \
-#			--Vis/CorType 0 \
-#			--Vis/MaxFeatures 1500 \
-#			--Vis/EstimationType 0 \
-#			--Vis/FeatureType 6\
-#			--Vis/InlierDistance $inlierdist \
-#			$gen_dir \
-#			> $out_dir/worker/out.${dot_a[j]}.od.txt \
+			#With loop closure
+			printf "\n${dot_a[j]}.od "
+			out_name=$out_name.od
+			
+			srun-fast --mem=8GB -c 4 ./rgbd_dataset \
+			--output $out_dir \
+			--outname $out_name \
+			--imagename "visible"\
+			--depthname "depth"\
+			--calibfile $calib \
+			--poses ${dot_a[j]} \
+			--times /imatge/icaminal/datasets/kitty/sequences/${seq_a[i]}/times.txt \
+			--scale ${depth_scale} \
+			--Rtabmap/PublishRAMUsage true \
+			--Rtabmap/DetectionRate 2 \
+			--Rtabmap/CreateIntermediateNodes true \
+			--RGBD/LinearUpdate 0 \
+			--Reg/Strategy 0 \
+			--GFTT/QualityLevel 0.0005\
+			--GFTT/MinDistance $gftt_dist \
+			--Odom/Strategy 0 \
+			--OdomF2M/MaxSize 3000 \
+			--Kp/MaxFeatures 750 \
+			--Vis/CorType 0 \
+			--Vis/MaxFeatures 1500 \
+			--Vis/EstimationType 0 \
+			--Vis/FeatureType 6\
+			--Vis/InlierDistance $inlierdist \
+			$gen_dir \
+			> $out_dir/worker/out.${dot_a[j]}.od.txt \
 
 			#--Mem/STMSize 30 \ #def. 10
 			#--RGBD/OptimizeMaxError 2.0 \
