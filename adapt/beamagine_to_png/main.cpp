@@ -1,6 +1,6 @@
 /*
  *
- *  Created on: 17/6/2018
+ *  Created on: 20/8/2018
  *      Author: Ivan Caminal
  */
 
@@ -12,8 +12,12 @@
 #include <stdlib.h>
 #include <sstream>
 #include <opencv2/opencv.hpp>
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Geometry>
+//#include <eigen3/Eigen/Core>
+//#include <eigen3/Eigen/Geometry>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
 #include <boost/filesystem.hpp>
 #include <getopt.h>
 
@@ -28,14 +32,14 @@ typedef ei::Matrix<float, 1, ei::Dynamic> Matrix1Xf;
 
 static struct option long_opt[] = {
     {"range",           required_argument,      0,   'r'    },
-    {"downsampling",    required_argument,      0,   'd'    },
+    {"width",           required_argument,      0,   'w'    },
+    {"heigh",           required_argument,      0,   'h'    },
     {"input",           required_argument,      0,   'i'    },
     {"sequence",        required_argument,      0,   's'    },
     {"output",          required_argument,      0,   'o'    },
     {"data",            required_argument,      0,   255+1  },
-    {"lidar",           required_argument,      0,   255+2  },
-    {"camera",          required_argument,      0,   255+3  },
-    {"help",            no_argument,            0,   'h'    },
+    {"frequency",       required_argument,      0,   'f'    },
+    {"help",            no_argument,            0,   255+2  },
     {0,                 0,                      0,   0      }
 };
 
@@ -84,10 +88,10 @@ bool resetDir(bf::path p)
     try
     {
         if(bf::exists(p) && bf::is_directory(p) && !bf::is_empty(p)) {
-            // char op;
-            // printf("Remove %s? [y/n]\n", p.c_str());
-            // cin>>op;
-            // if(op == 'y')
+            char op;
+            printf("Remove %s? [y/n]\n", p.c_str());
+            cin>>op;
+            if(op == 'y')
             bf::remove_all(p);
         }
         if(bf::exists(p) && bf::is_directory(p) && bf::is_empty(p)) return true;
@@ -197,20 +201,25 @@ void updateProgress(int val, int total)
          << flush;
 }
 
+string pop_slash(string str){
+    if(str.back() == '/') str.pop_back();
+    return str;
+}
+
 int main(int argc, char **argv)
 {
-    bf::path inPath, outPath;
-    string data_folder = "sequences", lidar_folder = "velodyne", camera_folder = "image_2", sequence;
-    float dfactor=1, range;
-    int camera;
+    bf::path inDir, outDir;
+    string data_folder, sequence;
+    float range, frequency=5;
+    int width, heigh;
 
     /*****************************Parser*****************************/
     bool mandatory;
     int c, longindex=0;
-    const char *short_opt = "r:d:i:s:o:h";
-    vector<int> mandatories={ 'r', 'd', 'i', 's', 'o'};
+    const char *short_opt = "r:w:h:i:s:o:f";
+    vector<int> mandatories={ 'r', 'w', 'h', 'i', 's', 'o'};
     vector<int> flags=mandatories;
-    ostringstream msg;
+    ostringstream msg, ostrFile;
 
     while ((c = getopt_long(argc, argv, short_opt, long_opt, &longindex)) != -1)
     {
@@ -220,12 +229,17 @@ int main(int argc, char **argv)
             range = atof(optarg);
             printf("%s '%f' meters\n", getName(c).c_str(), range);
             break;
-        case 'd':
-            dfactor = atof(optarg);
-            if(dfactor < 1 && dfactor > 0) printf("%s '%f'\n", getName(c).c_str(), dfactor);
-            else if(dfactor > 1) {dfactor = 1/dfactor; printf("%s '%f'\n", getName(c).c_str(), dfactor);}
-            else if(dfactor == 1) break;
-            else parse_error("Invalid downsampling factor");
+        case 'w':
+            width = atoi(optarg);
+            printf("%s '%i' pixels\n", getName(c).c_str(), width);
+            break;
+        case 'h':
+            heigh = atof(optarg);
+            printf("%s '%i' pixels\n", getName(c).c_str(), heigh);
+            break;
+        case 'i':
+            inDir = pop_slash(string(optarg));
+            printf("%s '%s'\n", getName(c).c_str(), inDir.c_str());
             break;
         case 's':
             sequence = optarg;
@@ -233,46 +247,35 @@ int main(int argc, char **argv)
             if(sequence.size()==1) sequence.insert(0,"0");
             printf("%s '%s'\n", getName(c).c_str(), sequence.c_str());
             break;
-        case 'i':
-            inPath = optarg;
-            printf("%s '%s'\n", getName(c).c_str(), inPath.c_str());
-            break;
         case 'o':
-            outPath = optarg;
-            printf("%s '%s'\n", getName(c).c_str(), outPath.c_str());
+            outDir = pop_slash(string(optarg));
+            printf("%s '%s'\n", getName(c).c_str(), outDir.c_str());
             break;
         case 255+1:
             data_folder = optarg;
             printf("%s '%s'\n", getName(c).c_str(), data_folder.c_str());
             break;
+        case 'f':
+            frequency = atof(optarg);
+            printf("%s '%f'\n", getName(c).c_str(), frequency);
+            break;
         case 255+2:
-            lidar_folder = optarg;
-            printf("%s '%s'\n", getName(c).c_str(), lidar_folder.c_str());
-            break;
-        case 255+3:
-            camera_folder = optarg;
-            printf("%s '%s'\n", getName(c).c_str(), camera_folder.c_str());
-            break;
-        case 'h':
             printf("Usage: %s mandatory [optional]\n", argv[0]);
             printf("\nMandatory args:\n");
             printf(" -r, --range        aproximate maximum lidar range (in meters)\n");
-            printf(" -d, --downsampling image downsampling\n");
-            printf(" -i, --input        kitty dataset directory\n");
+            printf(" -w, --width        width of the generated images in pixels\n");
+            printf(" -h, --heigh        heigh of the generated images in pixels\n");
+            printf(" -i, --input        beamagine dataset directory\n");
             printf(" -s, --sequence     number of the sequence to convert\n");
             printf(" -o, --output       directory to save the transformed sequence\n");
             printf("\nOptional args:\n");
-            printf(" --data             folder name contaning the data (lidar, cameras...) {default: sequences}\n");
-            printf(" --lidar            folder name contaning .bin lidar files {default: velodyne}\n");
-            printf(" --camera           folder name contaning .png color images {default: image_2}\n");
-            printf(" -h, --help         print this help and exit\n\n");
+            printf(" -f, --frequency    scanning frequency of the lidar in Hz {default: %f}\n", frequency);
+            printf(" --data             folder name contaning the data (lidar, cameras...)\n");
+            printf(" --help             print this help and exit\n\n");
             exit(0);
         default:
             parse_error();
         }
-
-        camera = (int) (camera_folder.back() - '0');
-        if(camera<0 || camera>3) parse_error("Invalid --camera folder");
 
         if(find(mandatories.begin(), mandatories.end(), c) != mandatories.end()) mandatory=true;
         else mandatory = false;
@@ -306,57 +309,53 @@ int main(int argc, char **argv)
     /*****************************Program*****************************/
 
     //Set up paths
-    bf::path dataPath = inPath.native()+data_folder+"/";
-    bf::path lidarPath = dataPath.native()+sequence+"/"+lidar_folder;
-    bf::path cameraPath = dataPath.native()+sequence+"/"+camera_folder;
-    bf::path calibPath = dataPath.native()+sequence+"/calib.txt";
-    bf::path timesPath = dataPath.native()+sequence+"/times.txt";
-    bf::path Ctxt = outPath.native()+sequence+"/visible.txt";
-    bf::path Dtxt = outPath.native()+sequence+"/depth.txt";
-    bf::path Itxt = outPath.native()+sequence+"/infrared.txt";
-    bf::path Atxt = outPath.native()+sequence+"/associations.txt";
+    bf::path dataDir = pop_slash(inDir.native()+data_folder);
+    bf::path lidarPath = dataDir.native()+"/"+sequence;
+    bf::path calibPath = dataDir.native()+"/calib.txt";
+    bf::path Dtxt = outDir.native()+"/"+sequence+"/depth.txt";
+    bf::path Itxt = outDir.native()+"/"+sequence+"/infrared.txt";
+    //bf::path Ctxt = outDir.native()+"/"+sequence+"/visible.txt";
+    bf::path Atxt = outDir.native()+"/"+sequence+"/associations.txt";
 
-    if(!verifyDir(dataPath) or !hasFiles(dataPath,"")) parse_error();
-    if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".bin")) parse_error();
-    if(!verifyDir(cameraPath) or !hasFiles(cameraPath,".png")) parse_error();
+    if(!verifyDir(dataDir) or !hasFiles(dataDir,"")) parse_error();
+    if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".pcd")) parse_error();
 
-    if(!verifyDir(outPath)) parse_error("Error creating save path");
-    bf::path outCpath = outPath.native()+sequence+"/visible/";
-    bf::path outDpath = outPath.native()+sequence+"/depth/";
-    bf::path outIpath = outPath.native()+sequence+"/infrared/";
-    if(!resetDir(outCpath)) exit(1);
+    if(!verifyDir(outDir)) parse_error("Error creating save path");
+    bf::path outDpath = outDir.native()+"/"+sequence+"/depth/";
+    bf::path outIpath = outDir.native()+"/"+sequence+"/infrared/";
+    //bf::path outCpath = outDir.native()+"/"+sequence+"/visible/";
     if(!resetDir(outDpath)) exit(1);
     if(!resetDir(outIpath)) exit(1);
+    //if(!resetDir(outCpath)) exit(1);
 
-    vector<bf::path> binPaths = getFilePaths(lidarPath, ".bin");
-    vector<bf::path> pngPaths = getFilePaths(cameraPath, ".png");
-    if(binPaths.size() != pngPaths.size()) parse_error("Different number of lidar/camera frames");
+    vector<bf::path> pcdPaths = getFilePaths(lidarPath, ".pcd");
 
     ifstream inCalib(calibPath.c_str());
-    ifstream inTimes(timesPath.c_str());
-    ofstream outCtxt(Ctxt.c_str());
+    //ofstream outCtxt(Ctxt.c_str());
     ofstream outDtxt(Dtxt.c_str());
     ofstream outItxt(Itxt.c_str());
     ofstream outAtxt(Atxt.c_str());
     if(!inCalib.good()) parse_error("Error opening file: "+calibPath.native()+"\n");
-    if(!inTimes.good()) parse_error("Error opening file: " + timesPath.native()+"\n");
-    if(!outCtxt.good() || !outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files");
+    if(!outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files");
 
 
     //Declare variables
-    bool isColorCamera = (camera == 2 || camera == 3) ? true : false;
-    float X, Y, Z, R, timestamp, depthScale;
-    int numPts, i, f, heigh, width, x, y, frames = binPaths.size();
+    float X, Y, Z, R, depthScale;
+    double timestamp = 0;
+    int numPts, x, y, f, frames = pcdPaths.size();
+    int space = (int) (log10((float) frames)+1);
     uint inside,outside,valid;
-    string l, num;
+    string l, num, strFile;
     istringstream line;
-    streampos begin, end;
-    Matrix34f P, Tr;
+    Matrix34f P;
     ei::Matrix3Xf pts;
     Matrix1Xf Im,Dm;
     ei::Array3Xf ptsP;
-    cv::Mat color, D, I;
-    vector<bf::path>::iterator itBin, itPng;
+    cv::Mat D, I;
+    vector<bf::path>::iterator itPcd;
+    pcl::PCLPointCloud2 cloud_blob;
+    //pcl::PointCloud<pcl::PointXYZI>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZI>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
 
 
     //Calculate depth sampling per meter
@@ -375,85 +374,49 @@ int main(int argc, char **argv)
         line>>num;
         if(num[0]=='P')
         {
-            if(camera == (int) num[1] - '0')
-            {
-                for(int i=0; line.good(); i++)
-                {
-                    line>>num;
-                    if(i==0 || i==2 || i==5 || i==6) P(i/4, i%4) = stof(num)*dfactor; //Scale intrinsics
-                    else P(i/4, i%4) = stof(num);
-                }
-            }
-            else continue;
-
-        }
-        else
-        {
             for(int i=0; line.good(); i++)
             {
                 line>>num;
-                Tr(i/4, i%4) = stof(num);
+                P(i/4, i%4) = stof(num);
             }
         }
     }
     inCalib.close();
 
-
     //For every frame
-    for(f = 0, itBin = binPaths.begin(), itPng = pngPaths.begin(); f<frames; f++, itBin++, itPng++)
+    for(f = 0, itPcd = pcdPaths.begin(); f<frames; f++, itPcd++)
     {
         updateProgress(f+1, frames);
 
-        //Load timestamp
-        getline(inTimes, l);
-        timestamp = stof(l);
+        //Update timestamp
+        timestamp += 1/frequency;
 
         //Load pointcloud and get XYZI values
-        ifstream inLid((*itBin).c_str(), ios::binary);
-        if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
-        begin = inLid.tellg();
-        inLid.seekg (0, ios::end);
-        end = inLid.tellg();
-        inLid.seekg(0, ios::beg);
-        numPts = (end-begin)/(4*sizeof(float)); //calculate number of points
+        pcl::io::loadPCDFile ((*itPcd).native(), cloud_blob);
+        pcl::fromPCLPointCloud2 (cloud_blob, *cloud);
+        numPts = cloud->points.size();
         pts = ei::Matrix3Xf::Zero(3, numPts);
         Im = Matrix1Xf::Zero(1, numPts);
-        for (i=0; i<numPts; i++)
+        for (size_t i = 0; i < numPts; ++i)
         {
-                if(!inLid.good()) parse_error("Error reading file: "+(*itBin).native()+"\n");
-                inLid.read((char *) &X, sizeof(float));
-                inLid.read((char *) &Y, sizeof(float));
-                inLid.read((char *) &Z, sizeof(float));
-                inLid.read((char *) &R, sizeof(float));
+                X = cloud->points[i].x;
+                Y = cloud->points[i].y;
+                Z = cloud->points[i].z;
+                R = cloud->points[i].r;
                 pts.col(i) << X, Y, Z;
                 Im.col(i) << R;
         }
-        inLid.close();
-
-        //Load color images
-        color = cv::imread((*itPng).c_str(), IMREAD_UNCHANGED);
-        if(color.empty()) parse_error("Could not open or find the color image: "+(*itPng).native()+"\n");
-        //if(isColorCamera) cv::cvtColor(color, color, COLOR_BGR2RGB);
-
-        //Downsample color images
-        if(dfactor != 1) cv::resize(color.clone(), color, Size(), dfactor, dfactor, cv::INTER_LINEAR);
-        if(f==0) {heigh = color.rows; width = color.cols;}
-
-//        cv::imshow( "Display window", color );
-//        cv::waitKey(5);
-
         //Project 3d lidar points and calculate scaled depth
-        pts=Tr*pts.colwise().homogeneous();
         ptsP=(P*pts.colwise().homogeneous()).array();
         ptsP.rowwise() /= ptsP.row(2);
         Dm=pts.row(2);
         Dm = Dm*depthScale;
-        ei::Array<float,1,ei::Dynamic> Da = Dm.array();
-        Dm = Da.round().matrix();
-        D = cv::Mat::zeros(color.size(), CV_16UC1);
-        I = cv::Mat::zeros(color.size(), CV_32FC1);
+        D = cv::Mat::zeros(width, heigh, CV_16UC1);
+        I = cv::Mat::zeros(width, heigh, CV_32FC1);
         inside=0, outside=0, valid=0;
-        for(i=0; i<Dm.cols(); i++) //iterate depth values
+        int32_t di;
+        uint16_t d;
+        for(int i=0; i<Dm.cols(); i++) //iterate depth values
         {
             x = round(ptsP(0,i));
             y = round(ptsP(1,i));
@@ -461,13 +424,14 @@ int main(int argc, char **argv)
             if(x<width && x>=0 && y<heigh && y>=0) //consider only points projected within camera sensor
             {
                 inside +=1;
-                if(Dm(0,i)>0) //only positive depth
+                di = (int32_t) round(Dm(0,i));
+                if(di>0) //only positive depth
                 {
                     valid+=1;
-                    ushort d = (ushort) Dm(0,i);
-                    if(d>=pow(2,16) && D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=pow(2,16)-1;//exceed established limit (save max)
-                    else if(D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=d;//pixel without value (save sensed depth)
-                    else if(D.at<ushort>(y,x) > d) D.at<ushort>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
+                    d = (uint16_t) di;
+                    if(d>=pow(2,16) && D.at<uint16_t>(y,x) == 0) D.at<uint16_t>(y,x)=pow(2,16)-1;//exceed established limit (save max)
+                    else if(D.at<uint16_t>(y,x) == 0) D.at<uint16_t>(y,x)=d;//pixel without value (save sensed depth)
+                    else if(D.at<uint16_t>(y,x) > d) D.at<uint16_t>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
                 }
                 I.at<float>(y,x) = Im(0,i);
             }
@@ -484,33 +448,20 @@ int main(int argc, char **argv)
 
 
         //Save color, depth and intensity images
-        outCtxt<<timestamp<<" ./visible/"<<(*itPng).filename().native()<<endl;
-        outDtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<endl;
-        outItxt<<timestamp<<" ./infrared/"<<(*itPng).filename().native()<<endl;
-        outAtxt<<timestamp<<" ./depth/"<<(*itPng).filename().native()<<" "<<timestamp<<" ./visible/"<<(*itPng).filename().native()<<endl;
+        ostrFile.str("");
+        ostrFile << setw(space) << setfill('0') << f+1 << +".png";
+        strFile = ostrFile.str();
+        outDtxt<<timestamp<<" ./depth/"<<strFile<<endl;
+        outItxt<<timestamp<<" ./infrared/"<<strFile<<endl;
+        //outCtxt<<timestamp<<" ./visible/"<<strFile<<endl;
+        outAtxt<<timestamp<<" ./depth/"<<strFile<<" "<<timestamp<<" ./infrared/"<<strFile<<endl;
 
-        if(!cv::imwrite(outCpath.native()+(*itPng).filename().native(), color)) parse_error("Error saving rgb image");
-        if(!cv::imwrite(outDpath.native()+(*itPng).filename().native(), D)) parse_error("Error saving depth image");
-        if(!cv::imwrite(outIpath.native()+(*itPng).filename().native(), I)) parse_error("Error saving intensity image");
+        if(!cv::imwrite(outDpath.native()+strFile, D)) parse_error("Error saving depth image");
+        if(!cv::imwrite(outIpath.native()+strFile, I)) parse_error("Error saving intensity image");
+        //if(!cv::imwrite(outCpath.native()+strFile, C)) parse_error("Error saving rgb image");
     }
-    outCtxt.close();
     outDtxt.close();
     outItxt.close();
+    //outCtxt.close();
     outAtxt.close();
-
-
-    //Save kintinuous calib file
-    bf::path kintCalib = outPath.native()+sequence+"/calib_"+to_string(1/dfactor)+".txt";
-    ofstream outKintCalib(kintCalib.c_str());
-    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file");
-    outKintCalib<<P(0,0)<<" ";
-    outKintCalib<<P(1,1)<<" ";
-    outKintCalib<<P(0,2)<<" ";
-    outKintCalib<<P(1,2)<<" ";
-    outKintCalib<<width<<" ";
-    outKintCalib<<heigh<<endl;
-    outKintCalib<<range<<endl;
-    outKintCalib.close();
-
-    cout<<endl<<endl<<"Transformation complete!"<<endl;
 }
