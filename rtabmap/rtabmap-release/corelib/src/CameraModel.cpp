@@ -120,7 +120,7 @@ CameraModel::CameraModel(
 		localTransform_(localTransform)
 {
 	UASSERT_MSG(fx > 0.0, uFormat("fx=%f", fx).c_str());
-	//UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
+	UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
 	UASSERT_MSG(cx >= 0.0 && imageSize.width>=0, uFormat("cx=%f imageSize.width=%d", cx, imageSize.width).c_str());
 	UASSERT_MSG(cy >= 0.0 && imageSize.height>=0, uFormat("cy=%f imageSize.height=%d", cy, imageSize.height).c_str());
 	UASSERT(!localTransform.isNull());
