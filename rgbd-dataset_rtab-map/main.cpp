@@ -207,7 +207,8 @@ int main(int argc, char * argv[])
 	// setup calibration file
 	CameraModel model;
 	std::string sequenceName = UFile(path).getName();
-	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+	//Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+	Transform opticalRotation(1,0,0,0, 0,1,0,0, 0,0,1,0);
 	//float depthFactor = 5.0f; //TUM
 	//float depthFactor = 0.546133f; //Kitty
 	depthFactor = depthFactor*scale_depth; //Scaled
@@ -267,7 +268,7 @@ int main(int argc, char * argv[])
 	// assuming source is 10 Hz
 	int mapUpdate = detectionRate>0?10 / detectionRate:1;
 
-	std::string databasePath = output+"/rtabmap.db";
+	std::string databasePath = output+"/database."+dots+".db";
 	UFile::erase(databasePath);
 	// if(cameraThread.camera()->init(path, outputName+"_calib"))
 	if(cameraThread.camera()->init(output, "rtabmap_calib"))
@@ -524,9 +525,9 @@ int main(int argc, char * argv[])
 		UERROR("Camera init failed!");
 	}
 
-	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", (output+"/database."+dots+".db").c_str());
+	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", databasePath.c_str());
 	printf("Do:\n"
-			" $ rtabmap-databaseViewer %s\n\n", (output+"/database."+dots+".db").c_str());
+			" $ rtabmap-databaseViewer %s\n\n", databasePath.c_str());
 
 	return 0;
 }
