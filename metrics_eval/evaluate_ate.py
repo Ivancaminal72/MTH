@@ -130,17 +130,24 @@ def plot_traj(ax,stamps,traj,style,color,label):
             y.append(traj[i][1])
             z.append(traj[i][2])
         elif len(x)>0:
-            ax.plot(x,y,style,color=color,label=label)
-            #ax.scatter(x, y, z, c=color) # 3D
+            if(args.threedim):
+                ax.scatter(x, y, z, c=color) # 3D
+            elif(args.vertical):
+                ax.plot(x,y,style,color=color,label=label)
+            else:
+                ax.plot(x,z,style,color=color,label=label)
             label=""
             x=[]
             y=[]
             z=[]
         last= stamps[i]
     if len(x)>0:
-        # ax.plot(x,y,style,color=color,label=label) #TUM
-        ax.plot(x,z,style,color=color,label=label) #KITTY
-        #ax.scatter(x, y, z, c=color) # 3D
+        if(args.threedim):
+            ax.scatter(x, y, z, c=color) # 3D
+        elif(args.vertical):
+            ax.plot(x,y,style,color=color,label=label)
+        else:
+            ax.plot(x,z,style,color=color,label=label)
 
 
 if __name__=="__main__":
@@ -157,6 +164,8 @@ if __name__=="__main__":
     parser.add_argument('--save_associations', help='save associated first and aligned second trajectory to disk (format: stamp1 x1 y1 z1 stamp2 x2 y2 z2)')
     parser.add_argument('--plot', help='plot the first and the aligned second trajectory to an image (format: png)')
     parser.add_argument('--verbose', help='print all evaluation data (otherwise, only the RMSE absolute translational error in meters after alignment will be printed)', action='store_true')
+    parser.add_argument('--vertical', help='plot projection', action='store_true')
+    parser.add_argument('--threedim', help='plot projection', action='store_true')
     args = parser.parse_args()
 
     first_list = read_file_list(args.first_file)
@@ -220,47 +229,59 @@ if __name__=="__main__":
         import matplotlib.pylab as pylab
         from matplotlib.patches import Ellipse
         fig = plt.figure()
-        ax = fig.add_subplot(111) #2D
-        #ax = fig.add_subplot(111, projection='3d') # 3D
+        if(args.threedim):
+            ax = fig.add_subplot(111, projection='3d') # 3D
+        else:
+            ax = fig.add_subplot(111) #2D
         ax.set_aspect('equal',adjustable='datalim')
 
         label="difference"
         # 2D
         for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
-            # ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
-            ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
+            if(args.vertical):
+                ax.plot([x1,x2],[y1,y2],'-',color="red",label=label)
+            else:
+                ax.plot([x1,x2],[z1,z2],'-',color="red",label=label)
             label=""
 
         plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
-        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
+        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"green","estimated")
 
         ax.legend()
         ax.set_xlabel('x [m]')
-        ax.set_ylabel('z [m]') #Kitty 2D
-        # ax.set_ylabel('y [m]') #TUM 2D
-        # plt.show() # 3D comentar
+        if(args.vertical and (not args.threedim)):
+            ax.set_ylabel('y [m]')
+        elif(not args.threedim):
+            ax.set_ylabel('z [m]')
+        # plt.show() # Show
         plt.savefig(args.plot,dpi=90)
 
         ##########################--SET ZOOM--#################################
 
         fig = plt.figure()
-        ax = fig.add_subplot(111) #2D
-        #ax = fig.add_subplot(111, projection='3d') # 3D
+        if(args.threedim):
+            ax = fig.add_subplot(111, projection='3d') # 3D
+        else:
+            ax = fig.add_subplot(111) #2D
         ax.set_aspect('auto')
 
         label="difference"
         # 2D
         for (a,b),(x1,y1,z1),(x2,y2,z2) in zip(matches,first_xyz.transpose().A,second_xyz_aligned.transpose().A):
-            # ax.plot([x1,x2],[y1,y2],'-',color="red",label=label) #TUM
-            ax.plot([x1,x2],[z1,z2],'-',color="red",label=label) #KITTY
+            if(args.vertical):
+                ax.plot([x1,x2],[y1,y2],'-',color="red",label=label)
+            else:
+                ax.plot([x1,x2],[z1,z2],'-',color="red",label=label)
             label=""
 
         plot_traj(ax,first_stamps,first_xyz_full.transpose().A,'-',"black","ground truth")
-        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"blue","estimated")
+        plot_traj(ax,second_stamps,second_xyz_full_aligned.transpose().A,'-',"green","estimated")
 
         ax.legend()
         ax.set_xlabel('x [m]')
-        ax.set_ylabel('z [m]') #Kitty 2D
-        # ax.set_ylabel('y [m]') #TUM 2D
+        if(args.vertical and (not args.threedim)):
+            ax.set_ylabel('y [m]')
+        elif(not args.threedim):
+            ax.set_ylabel('z [m]')
         # plt.show() # 3D comentar
         plt.savefig("zoom."+args.plot,dpi=90)
