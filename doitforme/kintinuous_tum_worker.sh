@@ -1,11 +1,14 @@
 #!/bin/bash
 path="/imatge/icaminal/datasets/TUM_rgbd"
-seq_a=("rgbd_dataset_freiburg1_360" 
-	 "rgbd_dataset_freiburg1_desk" 
+
+seq_a=("rgbd_dataset_freiburg1_desk" 
 	 "rgbd_dataset_freiburg1_room" 
-	 "rgbd_dataset_freiburg2_desk" 
-	 "rgbd_dataset_freiburg2_large_no_loop")
-cal_a=("1" "1" "1" "2" "2")
+	 "rgbd_dataset_freiburg2_desk"
+     "rgbd_dataset_freiburg2_large_no_loop"
+	 "rgbd_dataset_freiburg2_pioneer_slam2"
+     "rgbd_dataset_freiburg3_long_office_household")
+cal_a=("1" "1" "2" "2" "2" "3")
+
 test_a=(" " "-r" "-fod" "-fod -r" "-ri" "-fod -ri") 
 dot_a=("i" "r" "if" "rf" "ri" "rif")
 
@@ -15,7 +18,7 @@ cd /imatge/icaminal/workspace/Kintinuous/src/build
 for ((i=0;i<${#seq_a[@]};++i)); do
 	seq_dir=$path/${seq_a[i]}
 	rm -fr $seq_dir/worker/
-	mkdir $seq_dir/worker/
+	mkdir -p $seq_dir/worker/
 	rm -f $seq_dir/*poses*
 	rm -f $seq_dir/*ate*
 	rm -f $seq_dir/*plot*

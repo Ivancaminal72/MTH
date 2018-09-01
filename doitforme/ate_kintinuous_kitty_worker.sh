@@ -2,7 +2,7 @@
 downsampling=2
 path="/imatge/icaminal/datasets/kitty/generated"
 out_dir="/imatge/icaminal/results/kintinuous"
-out_file="$out_dir/ate_kitty_$downsampling.csv"
+out_file="$out_dir/ate_kitty_${downsampling}_improplots.csv"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10") 
 dot_a=("i" "r" "if" "rf" "ri" "rif")
 

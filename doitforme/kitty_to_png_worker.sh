@@ -1,7 +1,7 @@
 #!/bin/bash
 source ~/workspace/install/modules_adapt_kitty_to_png.sh
 ID=0
-downsampling=2
+downsampling=1
 while [ "$ID" -lt 10 ]
 do
     echo $ID
