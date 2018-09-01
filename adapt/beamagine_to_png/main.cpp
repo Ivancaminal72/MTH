@@ -4,7 +4,6 @@
  *      Author: Ivan Caminal
  */
 
-
 #include <iostream>
 #include <math.h>
 #include <fstream>
@@ -28,6 +27,7 @@ namespace ei = Eigen;
 
 typedef ei::Matrix<float, 3, 4> Matrix34f;
 typedef ei::Matrix<float, 1, ei::Dynamic> Matrix1Xf;
+typedef ei::Matrix<uint32_t, 1, ei::Dynamic> Matrix1Xu;
 
 
 static struct option long_opt[] = {
@@ -340,21 +340,22 @@ int main(int argc, char **argv)
 
 
     //Declare variables
-    float X, Y, Z, R, depthScale;
+    float X, Y, Z, depthScale, max_act, max_old;
+    uint32_t intensity;
     double timestamp = 0;
     int numPts, x, y, f, frames = pcdPaths.size();
     int space = (int) (log10((float) frames)+1);
-    uint inside,outside,valid;
+    uint inside,outside,valid,outOfRangeIntensity;
     string l, num, strFile;
     istringstream line;
     Matrix34f P;
     ei::Matrix3Xf pts;
-    Matrix1Xf Im,Dm;
+    Matrix1Xf Dm;
+    Matrix1Xu Im;
     ei::Array3Xf ptsP;
     cv::Mat D, I;
     vector<bf::path>::iterator itPcd;
-    pcl::PCLPointCloud2 cloud_blob;
-    //pcl::PointCloud<pcl::PointXYZI>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZI>);
+    pcl::PCLPointCloud2 blob;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
 
 
@@ -383,6 +384,9 @@ int main(int argc, char **argv)
     }
     inCalib.close();
 
+    //Invert focal_y to flip projection
+    P(1,1) = -1*P(1,1);
+
     //For every frame
     for(f = 0, itPcd = pcdPaths.begin(); f<frames; f++, itPcd++)
     {
@@ -392,30 +396,32 @@ int main(int argc, char **argv)
         timestamp += 1/frequency;
 
         //Load pointcloud and get XYZI values
-        pcl::io::loadPCDFile ((*itPcd).native(), cloud_blob);
-        pcl::fromPCLPointCloud2 (cloud_blob, *cloud);
+        pcl::io::loadPCDFile ((*itPcd).native(), blob);
+        pcl::fromPCLPointCloud2 (blob, *cloud);
         numPts = cloud->points.size();
         pts = ei::Matrix3Xf::Zero(3, numPts);
-        Im = Matrix1Xf::Zero(1, numPts);
+        Im = Matrix1Xu::Zero(1, numPts);
         for (size_t i = 0; i < numPts; ++i)
         {
-                X = cloud->points[i].x;
-                Y = cloud->points[i].y;
-                Z = cloud->points[i].z;
-                R = cloud->points[i].r;
+                X = cloud->points[i].x/1000.0;
+                Y = cloud->points[i].y/1000.0;
+                Z = cloud->points[i].z/1000.0;
+                intensity = *reinterpret_cast<int*>(&(cloud->points[i].rgb));
                 pts.col(i) << X, Y, Z;
-                Im.col(i) << R;
+                Im.col(i) << intensity;
         }
+
         //Project 3d lidar points and calculate scaled depth
         ptsP=(P*pts.colwise().homogeneous()).array();
         ptsP.rowwise() /= ptsP.row(2);
         Dm=pts.row(2);
         Dm = Dm*depthScale;
-        D = cv::Mat::zeros(width, heigh, CV_16UC1);
-        I = cv::Mat::zeros(width, heigh, CV_32FC1);
-        inside=0, outside=0, valid=0;
+        D = cv::Mat::zeros(heigh, width, CV_16UC1);
+        I = cv::Mat::zeros(heigh, width, CV_16UC1);
+        inside=0, outside=0, valid=0, outOfRangeIntensity=0;
         int32_t di;
         uint16_t d;
+        //cout<<"Intensity " << f <<" " <<Im.rowwise().maxCoeff()<<endl;
         for(int i=0; i<Dm.cols(); i++) //iterate depth values
         {
             x = round(ptsP(0,i));
@@ -433,19 +439,21 @@ int main(int argc, char **argv)
                     else if(D.at<uint16_t>(y,x) == 0) D.at<uint16_t>(y,x)=d;//pixel without value (save sensed depth)
                     else if(D.at<uint16_t>(y,x) > d) D.at<uint16_t>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
                 }
-                I.at<float>(y,x) = Im(0,i);
+
+                if(Im(0,i) < 0 || Im(0,i) >= pow(2,24)) outOfRangeIntensity++;
+                else I.at<uint16_t>(y,x) = trunc(((double) Im(0,i) / pow(2,24)) * pow(2,16)); //Re-quantize to 16bit
             }
             else outside+=1;
         }
 
-//        cout<<endl<<endl<< (float)inside/(inside+outside)<<"% inside depths"<<endl; //32%
-//        cout<<endl<<endl<< (float)valid/(inside+outside)<<"% inside and valid depths"<<endl; //0.16% !!!
+        // cout<< (float)inside*100/(inside+outside)<<"% inside depths"<<endl; //99%
+        // cout<< (float)valid*100/(inside+outside)<<"% inside and valid depths"<<endl; //99%
+        // cout<< (float)outOfRangeIntensity*100/inside<<"% out of dynamic range intensity"<<endl<<endl;//1%
 
-//        cv::imshow( "Display window", D);
-//        cv::waitKey(1);
+        // cv::imshow( "Display window", I);
+        // cv::waitKey(1);
 
-        //####Todo: Interpolate D image??
-
+        //Todo: Interpolate D image??
 
         //Save color, depth and intensity images
         ostrFile.str("");
@@ -464,4 +472,22 @@ int main(int argc, char **argv)
     outItxt.close();
     //outCtxt.close();
     outAtxt.close();
+
+    //Recover original focal
+    P(1,1) = -1*P(1,1);
+
+    //Save kintinuous calib file
+    bf::path kintCalib = outDir.native()+"/"+sequence+"/calib.txt";
+    ofstream outKintCalib(kintCalib.c_str());
+    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file");
+    outKintCalib<<P(0,0)<<" ";
+    outKintCalib<<P(1,1)<<" ";
+    outKintCalib<<P(0,2)<<" ";
+    outKintCalib<<P(1,2)<<" ";
+    outKintCalib<<width<<" ";
+    outKintCalib<<heigh<<endl;
+    outKintCalib<<range<<endl;
+    outKintCalib.close();
+
+    cout<<endl<<endl<<"Transformation complete!"<<endl;
 }
