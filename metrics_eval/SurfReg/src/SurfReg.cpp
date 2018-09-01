@@ -1,13 +1,16 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/console/parse.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/registration/icp.h>
 #include "ThreadMutexObject.h"
 
+std::string outfilepath;
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr rCloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mCloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 ThreadMutexObject<bool> done(false);
@@ -60,6 +63,14 @@ void computeAlignment()
     }
 
     std::cout << value << std::endl;
+    if(!outfilepath.empty())
+    {
+      std::ofstream outfile;
+      outfile.open(outfilepath.c_str(), std::ios_base::app);
+      outfile << rCloud->points.size() << ';' << value;
+      outfile.close();
+    }
+
 
     done.assignValue(true);
 }
@@ -73,6 +84,8 @@ int main(int argc, char ** argv)
 
     std::string modelFile;
     pcl::console::parse_argument(argc, argv, "-m", modelFile);
+
+    pcl::console::parse_argument(argc, argv, "-o", outfilepath);
 
     if(reconstructionFile.length() == 0 || modelFile.length() == 0)
     {
@@ -92,9 +105,20 @@ int main(int argc, char ** argv)
         }
     }
 
-    pcl::io::loadPLYFile(reconstructionFile, rPoints);
-
-    pcl::fromPCLPointCloud2(rPoints, *rCloud);
+    if (reconstructionFile.find("pcd") == std::string::npos)
+    {
+      std::cout<<"Loading ply... ";
+      pcl::io::loadPLYFile(reconstructionFile, rPoints);
+      pcl::fromPCLPointCloud2(rPoints, *rCloud);
+      std::cout<<rCloud->points.size()<<" points"<<std::endl;
+    }
+    else
+    {
+      std::cout<<"Loading pcd... ";
+      pcl::io::loadPCDFile (reconstructionFile, rPoints);
+      pcl::fromPCLPointCloud2 (rPoints, *rCloud);
+      std::cout<<rCloud->points.size()<<" points"<<std::endl;
+    }
 
     pcl::PCLPointCloud2 mPoints;
 
