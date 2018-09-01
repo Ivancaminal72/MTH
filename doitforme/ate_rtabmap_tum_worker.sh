@@ -1,5 +1,5 @@
 #!/bin/bash
-kpfeat="test"
+kpfeat="gftt_brief_fix_version2"
 path="/imatge/icaminal/datasets/TUM_rgbd"
 out_dir="/imatge/icaminal/results/rtabmap"
 out_file="$out_dir/ate_tum_${kpfeat}.csv"
@@ -10,12 +10,12 @@ seq_a=("rgbd_dataset_freiburg1_desk"
      "rgbd_dataset_freiburg2_large_no_loop"
 	 "rgbd_dataset_freiburg2_pioneer_slam2"
      "rgbd_dataset_freiburg3_long_office_household")
-proj_a=("--threedim" 
+proj_a=("--vertical" 
 		"--vertical" 
 		"--vertical" 
-		"" 
-		"" 
-		"--threedim")
+		"--vertical" 
+		"--vertical" 
+		"--vertical")
 inlier_dist_a=("0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1" "0.1") #FIXED
 cal_a=("1" "1" "2" "2" "2" "3")
 

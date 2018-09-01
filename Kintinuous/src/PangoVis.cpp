@@ -167,8 +167,8 @@ bool inline PangoVis::process()
     //if(pangolin::ShouldQuit())
     if(pangolin::ShouldQuit() || status.Get().compare("Finished") == 0)
     {
-        MainController::controller->save();
-        std::this_thread::sleep_for (std::chrono::seconds(360));
+        //MainController::controller->save();
+        //std::this_thread::sleep_for (std::chrono::seconds(360));
         MainController::controller->shutdown();
         return false;
     }
