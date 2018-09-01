@@ -19,6 +19,9 @@
 //This includes "PangoVis.h" already
 #include "MainController.h"
 
+#include <thread>
+#include <chrono>
+
 PangoVis::PangoVis(cv::Mat * depthIntrinsics)
  : ThreadObject("VisualisationThread"),
    liveTSDF(0),
@@ -161,9 +164,11 @@ bool inline PangoVis::process()
 {
     TICK(threadIdentifier);
 
-    //if(pangolin::ShouldQuit() || status.Get().compare("Finished") == 0)
-    if(pangolin::ShouldQuit())
+    //if(pangolin::ShouldQuit())
+    if(pangolin::ShouldQuit() || status.Get().compare("Finished") == 0)
     {
+        MainController::controller->save();
+        std::this_thread::sleep_for (std::chrono::seconds(360));
         MainController::controller->shutdown();
         return false;
     }
