@@ -85,7 +85,7 @@ class MainController
 
         void loadCalibration();
 
-        double scale;
+        double scale=1;
         cv::Mat * depthIntrinsics;
         PangoVis * pangoVis;
         TrackerInterface * trackerInterface;
