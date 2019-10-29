@@ -451,7 +451,7 @@ int main(int argc, char **argv)
         ei::Array<float,1,ei::Dynamic> Da = Dm.array();
         Dm = Da.round().matrix();
         D = cv::Mat::zeros(color.size(), CV_16UC1);
-        I = cv::Mat::zeros(color.size(), CV_32FC1);
+        I = cv::Mat::zeros(color.size(), CV_16UC1);
         inside=0, outside=0, valid=0;
         for(i=0; i<Dm.cols(); i++) //iterate depth values
         {
@@ -465,11 +465,14 @@ int main(int argc, char **argv)
                 {
                     valid+=1;
                     ushort d = (ushort) Dm(0,i);
-                    if(d>=pow(2,16) && D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=pow(2,16)-1;//exceed established limit (save max)
-                    else if(D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=d;//pixel without value (save sensed depth)
-                    else if(D.at<ushort>(y,x) > d) D.at<ushort>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
+                    if(D.at<ushort>(y,x) == 0 || D.at<ushort>(y,x) > d)//pixel need update
+                    {
+                      if(d>=pow(2,16)) D.at<ushort>(y,x)=pow(2,16)-1;//exceed established limit (save max)
+                      else if(D.at<ushort>(y,x) == 0) D.at<ushort>(y,x)=d;//inside limit (save sensed depth)
+                      else D.at<ushort>(y,x)=d;//pixel with value (save the smallest depth)
+                      I.at<uint16_t>(y,x) = trunc(Im(0,i) * pow(2,16)); //Save 16bit intensity
+                    }
                 }
-                I.at<float>(y,x) = Im(0,i);
             }
             else outside+=1;
         }

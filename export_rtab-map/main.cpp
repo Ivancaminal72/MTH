@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/obj_io.h>
 #include <pcl/common/common.h>
 #include <pcl/surface/poisson.h>
+#include <pcl/filters/extract_indices.h>
 #include <stdio.h>
 
 using namespace rtabmap;
@@ -118,6 +119,11 @@ int main(int argc, char * argv[])
 	std::map<int, rtabmap::Transform> cameraPoses;
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
 	std::map<int, cv::Mat> cameraDepths;
+	float voxelCellSize = 6.0/512; //---> 0.01f DEFAULT <---- //Lidar (unscaled --> 0.01, scaled -->0.01/factor)  | ICL 0.014(orig) 0.02(noise) 6.0/512(fair)
+	bool voxelize = true;
+	bool radFilt = true;
+	float radiusSearch = 0.02;
+	int minNeighborsInRadius = 10;
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 	{
 		Signature node = nodes.find(iter->first)->second;
@@ -130,24 +136,48 @@ int main(int argc, char * argv[])
 		pcl::IndicesPtr indices(new std::vector<int>);
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
 				node.sensorData(),
-				1,           // ---> 4 DEFAULT <---- image decimation before creating the clouds
-				4.0f,        // maximum depth of the cloud
+				9.0,           // ---> 4 DEFAULT <---- image decimation before creating the clouds ICL 8.0
+				4.0f,        // ---> 4 DEFAULT <---- // maximum depth of the cloud //Kitti (unscaled 15.0f, scaled 15/factor)
 				0.0f,
 				indices.get());
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-		transformedCloud = rtabmap::util3d::voxelize(cloud, indices, 0.01);
+		if(voxelize)
+		{
+			transformedCloud = rtabmap::util3d::voxelize(cloud, indices, voxelCellSize);
+			//generate indices for all points (they are all valid)
+			indices->resize(transformedCloud->size());
+			std::cout<<"before: "<<indices->size()<<std::endl;
+			for(unsigned int i=0; i<transformedCloud->size(); ++i)
+			{
+				indices->at(i) = i;
+			}
+			std::cout<<"after: "<<indices->size()<<std::endl;
+		}
+		else transformedCloud = cloud;
 		transformedCloud = rtabmap::util3d::transformPointCloud(transformedCloud, iter->second);
 
 		Eigen::Vector3f viewpoint( iter->second.x(),  iter->second.y(),  iter->second.z());
-		pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(transformedCloud, 10, 0.0f, viewpoint);
+		pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(transformedCloud, indices, 10, 0.0f, viewpoint);
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 		pcl::concatenateFields(*transformedCloud, *normals, *cloudWithNormals);
 
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr finalCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+		pcl::ExtractIndices<pcl::PointXYZRGBNormal> extract;
+		if(indices->size() && radFilt)
+		{
+			indices = util3d::radiusFiltering(cloudWithNormals, indices, radiusSearch, minNeighborsInRadius);
+		}
+
+		extract.setInputCloud (cloudWithNormals);
+		extract.setIndices (indices);
+		extract.setNegative (false);
+		extract.filter (*finalCloud);
+
 		if(mergedClouds->size() == 0)
 		{
-			*mergedClouds = *cloudWithNormals;
+			*mergedClouds = *finalCloud;
 		}
 		else
 		{
@@ -168,8 +198,11 @@ int main(int argc, char * argv[])
 	{
 		if(!(mesh || texture))
 		{
-			printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", 0.01f, (int)mergedClouds->size());
-			mergedClouds = util3d::voxelize(mergedClouds, 0.01f);
+			if(voxelize)
+			{
+				printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", voxelCellSize, (int)mergedClouds->size());
+				mergedClouds = util3d::voxelize(mergedClouds, voxelCellSize);
+			}
 
 			printf("Saving cloud.ply... (%d points)\n", (int)mergedClouds->size());
 			pcl::io::savePLYFile(output+"/cloud."+dots+".ply", *mergedClouds);
@@ -225,7 +258,7 @@ int main(int argc, char * argv[])
 							cameraPoses,
 							cameraModels,
 							cameraDepths,
-							0.0f,					//---> 3 DEFAULT <---- // max camera distance to polygon to apply texture
+							3.0f,					//---> 3 DEFAULT <---- // max camera distance to polygon to apply texture
 							0.0f,
 							0.0f,
 							50,

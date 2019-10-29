@@ -57,7 +57,6 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--Odom/Strategy 0 \
 			--OdomF2M/MaxSize 3000 \
 			--Kp/MaxFeatures -1 \
-			--Kp/DetectorStrategy 6 \
 			--Vis/CorType 0 \
 			--Vis/MaxFeatures 1500 \
 			--Vis/EstimationType 0 \
@@ -122,7 +121,6 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--Odom/Strategy 0 \
 			--OdomF2M/MaxSize 3000 \
 			--Kp/MaxFeatures 750 \
-			--Kp/DetectorStrategy 6 \
 			--Vis/CorType 0 \
 			--Vis/MaxFeatures 1500 \
 			--Vis/EstimationType 0 \

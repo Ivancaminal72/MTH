@@ -312,31 +312,19 @@ int main(int argc, char **argv)
     bf::path dataDir = pop_slash(inDir.native()+data_folder);
     bf::path lidarPath = dataDir.native()+"/"+sequence;
     bf::path calibPath = dataDir.native()+"/calib.txt";
-    bf::path Dtxt = outDir.native()+"/"+sequence+"/depth.txt";
-    bf::path Itxt = outDir.native()+"/"+sequence+"/infrared.txt";
-    //bf::path Ctxt = outDir.native()+"/"+sequence+"/visible.txt";
-    bf::path Atxt = outDir.native()+"/"+sequence+"/associations.txt";
+    bf::path textPath = outDir.native()+"/"+sequence+".txt";
 
     if(!verifyDir(dataDir) or !hasFiles(dataDir,"")) parse_error();
     if(!verifyDir(lidarPath) or !hasFiles(lidarPath,".pcd")) parse_error();
 
     if(!verifyDir(outDir)) parse_error("Error creating save path");
-    bf::path outDpath = outDir.native()+"/"+sequence+"/depth/";
-    bf::path outIpath = outDir.native()+"/"+sequence+"/infrared/";
-    //bf::path outCpath = outDir.native()+"/"+sequence+"/visible/";
-    if(!resetDir(outDpath)) exit(1);
-    if(!resetDir(outIpath)) exit(1);
-    //if(!resetDir(outCpath)) exit(1);
 
     vector<bf::path> pcdPaths = getFilePaths(lidarPath, ".pcd");
 
     ifstream inCalib(calibPath.c_str());
     //ofstream outCtxt(Ctxt.c_str());
-    ofstream outDtxt(Dtxt.c_str());
-    ofstream outItxt(Itxt.c_str());
-    ofstream outAtxt(Atxt.c_str());
+    ofstream outText(textPath.c_str());
     if(!inCalib.good()) parse_error("Error opening file: "+calibPath.native()+"\n");
-    if(!outDtxt.good() || !outItxt.good() || !outAtxt.good()) parse_error("Error opening txt save files");
 
 
     //Declare variables
@@ -345,7 +333,7 @@ int main(int argc, char **argv)
     double timestamp = 0;
     int numPts, x, y, f, frames = pcdPaths.size();
     int space = (int) (log10((float) frames)+1);
-    uint inside,outside,valid,outOfRangeIntensity,saturatedIntensity,nullIntensity, validIntensity;
+    uint inside,outside,valid,outOfRangeIntensity, selected;
     string l, num, strFile;
     istringstream line;
     Matrix34f P;
@@ -384,6 +372,10 @@ int main(int argc, char **argv)
     }
     inCalib.close();
 
+    //Invert focal_y to flip projection
+    P(1,1) = -1*P(1,1);
+
+    selected = 0;
     //For every frame
     for(f = 0, itPcd = pcdPaths.begin(); f<frames; f++, itPcd++)
     {
@@ -415,7 +407,7 @@ int main(int argc, char **argv)
         Dm = Dm*depthScale;
         D = cv::Mat::zeros(heigh, width, CV_16UC1);
         I = cv::Mat::zeros(heigh, width, CV_16UC1);
-        inside=0, outside=0, valid=0, outOfRangeIntensity=0, saturatedIntensity=0, nullIntensity=0, validIntensity=0;
+        inside=0, outside=0, valid=0, outOfRangeIntensity=0;
         int32_t di;
         uint16_t d;
         //cout<<"Intensity " << f <<" " <<Im.rowwise().maxCoeff()<<endl;
@@ -424,84 +416,41 @@ int main(int argc, char **argv)
             x = round(ptsP(0,i));
             y = round(ptsP(1,i));
 
-            x = width-1-x; //Rotate the projection 180º
-            y = heigh-1-y; //Rotate the projection 180º
-
             if(x<width && x>=0 && y<heigh && y>=0) //consider only points projected within camera sensor
             {
                 inside +=1;
                 di = (int32_t) round(Dm(0,i));
                 if(di>0) //only positive depth
                 {
-                    valid+=1;
-                    d = (uint16_t) di;
-                    if(D.at<uint16_t>(y,x) == 0 || D.at<uint16_t>(y,x) > d)//pixel need update
-                    {
-                        //Update depth value
-                        if(d>=pow(2,16)) D.at<uint16_t>(y,x)=pow(2,16)-1;//exceed established limit (save max)
-                        else if(D.at<uint16_t>(y,x) == 0) D.at<uint16_t>(y,x)=d;//inside limit (save sensed depth)
-                        else D.at<uint16_t>(y,x)=d;//pixel with value (save the smallest depth)
-                        I.at<uint16_t>(y,x) = trunc(Im(0,i) * pow(2,16)); //Save 16bit intensity
 
-                        //Update intensity value
-                        if(Im(0,i) < 0 || Im(0,i) >= pow(2,24)) outOfRangeIntensity++;
-                        else if(Im(0,i) > 1.664e7) saturatedIntensity++;
-                        else if(Im(0,i) < pow(2,16)) nullIntensity++;
-                        else
-                        {
-                          I.at<uint16_t>(y,x) = trunc(((double) Im(0,i) / pow(2,8))); //Re-quantize from 24bit to 16bit
-                          validIntensity++;
-                        }
-                    }
+                    d = (uint16_t) di;
+                    if(d>=pow(2,16) && D.at<uint16_t>(y,x) == 0) D.at<uint16_t>(y,x)=pow(2,16)-1;//exceed established limit (save max)
+                    else if(D.at<uint16_t>(y,x) == 0) D.at<uint16_t>(y,x)=d;//pixel without value (save sensed depth)
+                    else if(D.at<uint16_t>(y,x) > d) D.at<uint16_t>(y,x)=d;//pow(2,16)-1; //pixel with value (save the smaller depth)
                 }
+
+                if(Im(0,i) >= 0 && Im(0,i) < pow(2,32) && f%5 == 0)
+                {
+                  outText<<Im(0,i)<<";";
+                  valid+=1;
+                }
+
+                //if(Im(0,i) < 0 || Im(0,i) >= pow(2,24)) outOfRangeIntensity++;
+                //else I.at<uint16_t>(y,x) = trunc(((double) Im(0,i) / pow(2,24)) * pow(2,16)); //Re-quantize to 16bit
             }
             else outside+=1;
+            //printf(inside+outside); //~94,5K points x scan
         }
+        if(f%5 == 0)
+        {
+          outText<<endl;
+          selected++;
+          cout<<"SELECTED: "<<selected<<"/12"<<endl;
+        }
+        if(selected == 12) break;
 
-        cout<<endl;
-        // cout<< (float)inside*100/(inside+outside)<<"% inside depths"<<endl; //99%
-        // cout<< (float)valid*100/(inside+outside)<<"% inside and valid depths"<<endl; //99%
-        cout<< (float)outOfRangeIntensity*100/inside<<"% out of dynamic range intensity"<<endl;//1%
-        cout<< (float)saturatedIntensity*100/inside<<"% saturated intensity"<<endl;//1%
-        cout<< (float)nullIntensity*100/inside<<"% null intensity"<<endl;//1%
-        cout<< (float)validIntensity*100/inside<<"% valid intensity"<<endl;//1%
-        cout<<endl;
 
-        // cv::imshow( "Display window", I);
-        // cv::waitKey(1);
-
-        //Todo: Interpolate D image??
-
-        //Save color, depth and intensity images
-        ostrFile.str("");
-        ostrFile << setw(space) << setfill('0') << f+1 << +".png";
-        strFile = ostrFile.str();
-        outDtxt<<timestamp<<" ./depth/"<<strFile<<endl;
-        outItxt<<timestamp<<" ./infrared/"<<strFile<<endl;
-        //outCtxt<<timestamp<<" ./visible/"<<strFile<<endl;
-        outAtxt<<timestamp<<" ./depth/"<<strFile<<" "<<timestamp<<" ./infrared/"<<strFile<<endl;
-
-        if(!cv::imwrite(outDpath.native()+strFile, D)) parse_error("Error saving depth image");
-        if(!cv::imwrite(outIpath.native()+strFile, I)) parse_error("Error saving intensity image");
-        //if(!cv::imwrite(outCpath.native()+strFile, C)) parse_error("Error saving rgb image");
     }
-    outDtxt.close();
-    outItxt.close();
-    //outCtxt.close();
-    outAtxt.close();
-
-    //Save kintinuous calib file
-    bf::path kintCalib = outDir.native()+"/"+sequence+"/calib.txt";
-    ofstream outKintCalib(kintCalib.c_str());
-    if(!outKintCalib.good()) parse_error("Error opening kintinuous calib file");
-    outKintCalib<<P(0,0)<<" ";
-    outKintCalib<<P(1,1)<<" ";
-    outKintCalib<<P(0,2)<<" ";
-    outKintCalib<<P(1,2)<<" ";
-    outKintCalib<<width<<" ";
-    outKintCalib<<heigh<<endl;
-    outKintCalib<<range<<endl;
-    outKintCalib.close();
-
-    cout<<endl<<endl<<"Transformation complete!"<<endl;
+    outText.close();
+    if(selected != 12) exit(1);
 }

@@ -2,7 +2,7 @@
 downsampling=1
 path="/imatge/icaminal/datasets/kitty/generated"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10")
-inlier_dist_a=("0.4" "3.2" "0.6" "0.7" "0.7" "0.5" "6.0" "0.3" "1.3" "1.9" "0.4") #gftt/brief
+#inlier_dist_a=("0.4" "3.2" "0.6" "0.7" "0.7" "0.5" "6.0" "0.3" "1.3" "1.9" "0.4") #gftt/brief
 #inlier_dist_a=("0.4" "1.6" "0.5" "0.3" "1.2" "0.4" "1.3" "0.3" "0.6" "1.0" "0.4") #gftt/brief downsampling2
 inlier_dist_a=("2" "2" "2" "2" "2" "2" "2" "2" "2" "2" "2" "2" "2" "2" "2" "2" "2") #FIX
 
@@ -55,15 +55,16 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--Odom/Strategy 0 \
 			--OdomF2M/MaxSize 3000 \
 			--Kp/MaxFeatures -1 \
-			--Kp/DetectorStrategy 4 \
+			--Kp/DetectorStrategy 6 \
 			--Vis/CorType 0 \
 			--Vis/MaxFeatures 1500 \
 			--Vis/EstimationType 0 \
-			--Vis/FeatureType 4\
+			--Vis/FeatureType 6\
 			--Vis/InlierDistance $inlierdist \
 			$gen_dir \
 			> $out_dir/worker/out.${dot_a[j]}.txt \
 
+			
 			retVal=$?
 			if [[ $retVal -eq 0 ]]
 			then
@@ -123,11 +124,11 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--Odom/Strategy 0 \
 			--OdomF2M/MaxSize 3000 \
 			--Kp/MaxFeatures 750 \
-			--Kp/DetectorStrategy 4 \
+			--Kp/DetectorStrategy 6 \
 			--Vis/CorType 0 \
 			--Vis/MaxFeatures 1500 \
 			--Vis/EstimationType 0 \
-			--Vis/FeatureType 4\
+			--Vis/FeatureType 6\
 			--Vis/InlierDistance $inlierdist \
 			$gen_dir \
 			> $out_dir/worker/out.${dot_a[j]}.od.txt \

@@ -1,5 +1,5 @@
 #!/bin/bash
-kpfeat="gftt_brief_fix_version2"
+kpfeat="test"
 path="/imatge/icaminal/datasets/TUM_rgbd"
 out_dir="/imatge/icaminal/results/rtabmap"
 out_file="$out_dir/ate_tum_${kpfeat}.csv"
