@@ -1,6 +1,6 @@
 #!/bin/bash
-map_dir="/work/icaminal/reconstructions/kitty"
-path="/imatge/icaminal/datasets/kitty/generated"
+map_dir="/work/icaminal/reconstructions/kitti"
+path="/imatge/icaminal/datasets/kitti/generated"
 source ~/workspace/install/modules_rtabmap.sh
 
 #seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10")

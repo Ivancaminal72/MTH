@@ -100,7 +100,7 @@ int main(int argc, char **argv)
         case 'h':
             printf("Usage: %s mandatory [optional]\n", argv[0]);
             printf("\nMandatory args:\n");
-            printf(" -i, --input        path to read the kitty gt poses file\n");
+            printf(" -i, --input        path to read the kitti gt poses file\n");
             printf(" -o, --output       path to save the transformed freiburg file\n");
             printf(" -t, --timestamps   path to read the timestamps file\n");
             printf("\nOptional args:\n");
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
         if(tsFile.eof()) break;
         ts = stof(num);
 
-        //Read kitty format
+        //Read kitti format
         getline(inFile, l);
         line.str(l);
         line.clear();

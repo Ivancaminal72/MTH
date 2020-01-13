@@ -1,6 +1,6 @@
 #!/bin/bash
 source ~/workspace/install/modules_tool_png_to_klg.sh
-path="/imatge/icaminal/datasets/kitty/generated"
+path="/imatge/icaminal/datasets/kitti/generated"
 downsampling=2
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "22") 
 cd /imatge/icaminal/workspace/adapt/png_to_klg/build

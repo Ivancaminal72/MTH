@@ -1,7 +1,7 @@
 #!/bin/bash
 module purge
 module load opencv
-path="/projects/world3d/2018-slam/kitty/generated"
+path="/projects/world3d/2018-slam/kitti/generated"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10")
 source ~/workspace/install/modules_icl.sh
 

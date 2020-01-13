@@ -258,7 +258,7 @@ int main(int argc, char **argv)
             printf("\nMandatory args:\n");
             printf(" -r, --range        aproximate maximum lidar range (in meters)\n");
             printf(" -d, --downsampling image downsampling\n");
-            printf(" -i, --input        kitty dataset directory\n");
+            printf(" -i, --input        kitti dataset directory\n");
             printf(" -s, --sequence     number of the sequence to convert\n");
             printf(" -o, --output       directory to save the transformed sequence\n");
             printf("\nOptional args:\n");

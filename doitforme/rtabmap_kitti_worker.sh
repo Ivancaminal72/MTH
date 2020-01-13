@@ -1,6 +1,6 @@
 #!/bin/bash
 downsampling=1
-path="/imatge/icaminal/datasets/kitty/generated"
+path="/imatge/icaminal/datasets/kitti/generated"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10")
 #inlier_dist_a=("0.4" "3.2" "0.6" "0.7" "0.7" "0.5" "6.0" "0.3" "1.3" "1.9" "0.4") #gftt/brief
 #inlier_dist_a=("0.4" "1.6" "0.5" "0.3" "1.2" "0.4" "1.3" "0.3" "0.6" "1.0" "0.4") #gftt/brief downsampling2
@@ -44,7 +44,7 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--calibfile $calib \
 			--poses ${dot_a[j]} \
 			--scale ${depth_scale} \
-			--times /imatge/icaminal/datasets/kitty/sequences/${seq_a[i]}/times.txt \
+			--times /imatge/icaminal/datasets/kitti/sequences/${seq_a[i]}/times.txt \
 			--Rtabmap/PublishRAMUsage true \
 			--Rtabmap/DetectionRate 2 \
 			--Rtabmap/CreateIntermediateNodes true \
@@ -112,7 +112,7 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 			--depthname "depth"\
 			--calibfile $calib \
 			--poses ${dot_a[j]} \
-			--times /imatge/icaminal/datasets/kitty/sequences/${seq_a[i]}/times.txt \
+			--times /imatge/icaminal/datasets/kitti/sequences/${seq_a[i]}/times.txt \
 			--scale ${depth_scale} \
 			--Rtabmap/PublishRAMUsage true \
 			--Rtabmap/DetectionRate 2 \

@@ -1,8 +1,8 @@
 #!/bin/bash
 downsampling=2
-path="/imatge/icaminal/datasets/kitty/generated"
+path="/imatge/icaminal/datasets/kitti/generated"
 out_dir="/imatge/icaminal/results/kintinuous"
-out_file="$out_dir/ate_kitty_${downsampling}_improplots.csv"
+out_file="$out_dir/ate_kitti_${downsampling}_improplots.csv"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10") 
 dot_a=("i" "r" "if" "rf" "ri" "rif")
 
@@ -24,13 +24,13 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 		printf "${dot_a[j]};" | tee -a $out_file
 
 		#Without loop closure
-		python ~/workspace/metrics_eval/evaluate_ate.py --verbose /imatge/icaminal/datasets/kitty/poses/${seq_a[i]}_freiburg.txt ./${in_name} --plot plot.${dot_a[j]}.png | tee -a $out_file
+		python ~/workspace/metrics_eval/evaluate_ate.py --verbose /imatge/icaminal/datasets/kitti/poses/${seq_a[i]}_freiburg.txt ./${in_name} --plot plot.${dot_a[j]}.png | tee -a $out_file
 
 		printf "\n${seq_a[i]};" | tee -a $out_file		
 		printf "${dot_a[j]}.od;" | tee -a $out_file
 
 		#With loop closure
-		python ~/workspace/metrics_eval/evaluate_ate.py --verbose --scale 20 /imatge/icaminal/datasets/kitty/poses/${seq_a[i]}_freiburg.txt ./${in_name}.od --plot plot.${dot_a[j]}.od.png | tee -a $out_file
+		python ~/workspace/metrics_eval/evaluate_ate.py --verbose --scale 20 /imatge/icaminal/datasets/kitti/poses/${seq_a[i]}_freiburg.txt ./${in_name}.od --plot plot.${dot_a[j]}.od.png | tee -a $out_file
 
 	done
 done

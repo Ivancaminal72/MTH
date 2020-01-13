@@ -5,7 +5,7 @@ import time
 from matplotlib import pyplot as plt
 
 #path="/imatge/icaminal/datasets/Beamagine/3captures_30-08-2018/generated/02/infrared_mint_three/"
-path="/imatge/icaminal/datasets/kitty/generated/07/infrared_mint_three/"
+path="/imatge/icaminal/datasets/kitti/generated/07/infrared_mint_three/"
 import os
 for file in sorted(os.listdir(path)):
     if file.endswith(".png"):

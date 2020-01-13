@@ -35,7 +35,7 @@ if __name__=="__main__":
     #             vals.extend(act_vals)
     #     Lvals.extend(np.array(vals))
 
-    img = cv2.imread("/imatge/icaminal/datasets/kitty/generated/07/infrared_mint_three/000000.png")
+    img = cv2.imread("/imatge/icaminal/datasets/kitti/generated/07/infrared_mint_three/000000.png")
 
     # img = adjust_gamma(img, gamma=1)
     # cv2.imshow("some", img)

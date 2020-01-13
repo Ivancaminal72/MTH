@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(groundtruth_kitty_to_freiburg)
+project(groundtruth_kitti_to_freiburg)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(Boost_INCLUDE_DIR /usr/local/opt/boost-1.60/include)

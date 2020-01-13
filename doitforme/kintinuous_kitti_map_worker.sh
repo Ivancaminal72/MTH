@@ -1,7 +1,7 @@
 #!/bin/bash
 downsampling=1
-map_dir="/work/icaminal/reconstructions/kitty"
-path="/imatge/icaminal/datasets/kitty/generated"
+map_dir="/work/icaminal/reconstructions/kitti"
+path="/imatge/icaminal/datasets/kitti/generated"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "22") 
 #test_a=("" "-r" "-fod" "-fod -r" "-ri" "-fod -ri")
 #dot_a=("i" "r" "if" "rf" "ri" "rif")

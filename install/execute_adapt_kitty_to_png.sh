@@ -9,9 +9,9 @@ module load eigen/3.3.4 \
 			boost/1.60 \
 
 #execute
-cd /imatge/icaminal/workspace/adapt/KITTY/kitty_to_png/build
+cd /imatge/icaminal/workspace/adapt/kitti/kitti_to_png/build
 pwd
-srun-fast --x11 --mem=8GB -c1 ./kitty_to_png \
+srun-fast --x11 --mem=8GB -c1 ./kitti_to_png \
 -r 120 \
 -d 1 \
 -i /imatge/icaminal/projects/world3d/2018-slam/dataset/ \

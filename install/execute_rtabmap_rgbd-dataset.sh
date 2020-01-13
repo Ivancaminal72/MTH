@@ -1,6 +1,6 @@
 #!/bin/bash
 downsampling=1
-path="/imatge/icaminal/datasets/kitty/generated"
+path="/imatge/icaminal/datasets/kitti/generated"
 seq_a=("00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "22") 
 test_a=("" "-r" "-fod" "-fod -r" "-ri" "-fod -ri")
 dot_a=("i" "r" "if" "rf" "ri" "rif")
@@ -10,9 +10,9 @@ source ~/workspace/world3d-ros/devel/setup.bash
 cd /imatge/icaminal/workspace/rgbd-dataset_rtab-map/build
 
 srun-fast --x11 --mem=8GB -c 4 ./rgbd_dataset \
---output /projects/world3d/2018-slam/kitty/generated/05_rtab \
+--output /projects/world3d/2018-slam/kitti/generated/05_rtab \
 --calib calib_1.000000.txt \
---times /imatge/icaminal/datasets/kitty/sequences/05 \
+--times /imatge/icaminal/datasets/kitti/sequences/05 \
 --Rtabmap/PublishRAMUsage true \
 --Rtabmap/DetectionRate 2 \
 --Rtabmap/CreateIntermediateNodes true \
@@ -26,7 +26,7 @@ srun-fast --x11 --mem=8GB -c 4 ./rgbd_dataset \
 --Vis/MaxFeatures 1500 \
 --Vis/EstimationType 0 \
 --Vis/InlierDistance 0.5 \
-/projects/world3d/2018-slam/kitty/generated/05
+/projects/world3d/2018-slam/kitti/generated/05
 
 #--Mem/STMSize 30 \ #def. 10
 #--RGBD/OptimizeMaxError 2.0 \

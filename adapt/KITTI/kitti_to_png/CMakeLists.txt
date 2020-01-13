@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(kitty_to_png)
+project(kitti_to_png)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(Boost_INCLUDE_DIR /usr/local/opt/boost-1.60/include)
