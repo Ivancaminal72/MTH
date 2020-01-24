@@ -1,6 +1,6 @@
 #!/bin/bash
 map_dir="/work/icaminal/reconstructions/icl"
-path="/imatge/icaminal/datasets/ICL-NUIM_synthetic/living-room"
+path="/imatge/icaminal/datasets/iclnuim/living-room"
 source ~/workspace/install/modules_kintinuous.sh
 cd /imatge/icaminal/workspace/Kintinuous/src/build
 

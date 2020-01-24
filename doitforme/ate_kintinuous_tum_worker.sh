@@ -1,5 +1,5 @@
 #!/bin/bash
-path="/imatge/icaminal/datasets/TUM_rgbd"
+path="/imatge/icaminal/datasets/tumrgbd"
 out_dir="/imatge/icaminal/results/kintinuous"
 out_file="$out_dir/ate_tum.csv"
 seq_a=("rgbd_dataset_freiburg1_desk" 

@@ -1,6 +1,6 @@
 #!/bin/bash
 source ~/workspace/install/modules_tool_png_to_klg.sh
-path="/imatge/icaminal/datasets/ICL-NUIM_synthetic/living-room"
+path="/imatge/icaminal/datasets/iclnuim/living-room"
 cd /imatge/icaminal/workspace/adapt/png_to_klg/build
 for ((i=0;i<4;++i)); do
 

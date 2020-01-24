@@ -1,6 +1,6 @@
 #!/bin/bash
 kpfeat="test"
-path="/imatge/icaminal/datasets/TUM_rgbd"
+path="/imatge/icaminal/datasets/tumrgbd"
 out_dir="/imatge/icaminal/results/rtabmap"
 out_file="$out_dir/ate_tum_${kpfeat}.csv"
 

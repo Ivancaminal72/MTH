@@ -1,6 +1,6 @@
 #!/bin/bash
 downsampling=1
-path="/imatge/icaminal/datasets/TUM_rgbd"
+path="/imatge/icaminal/datasets/tumrgbd"
 
 seq_a=("rgbd_dataset_freiburg1_desk" 
 	 "rgbd_dataset_freiburg1_room" 

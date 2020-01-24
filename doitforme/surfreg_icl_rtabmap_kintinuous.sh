@@ -15,7 +15,7 @@ for ((i=2;i<3;++i)); do
 		printf "\n$filename;" | tee -a $out_file 
 		printf "$version;" | tee -a $out_file 
 		printf "$i;" | tee -a $out_file 
-		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/ICL-NUIM_synthetic/living-room/model.ply -t $i -o $out_file
+		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/iclnuim/living-room/model.ply -t $i -o $out_file
 	done
 done
 
@@ -27,7 +27,7 @@ done
 #		printf "\n$filename;" | tee -a $out_file 
 #		printf "$version;" | tee -a $out_file 
 #		printf "$i;" | tee -a $out_file 
-#		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/ICL-NUIM_synthetic/living-room/model.ply -t $i -o $out_file
+#		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/iclnuim/living-room/model.ply -t $i -o $out_file
 #	done
 #done
 
@@ -45,7 +45,7 @@ done
 #		printf "\n$filename;" | tee -a $out_file
 #		printf "$version;" | tee -a $out_file 
 #		printf "$i;" | tee -a $out_file 
-#		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/ICL-NUIM_synthetic/living-room/model.ply -t $i -o $out_file
+#		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/iclnuim/living-room/model.ply -t $i -o $out_file
 #	done
 #done
 
@@ -57,7 +57,7 @@ done
 #		printf "\n$filename;" | tee -a $out_file
 #		printf "$version;" | tee -a $out_file  
 #		printf "$i;" | tee -a $out_file 
-#		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/ICL-NUIM_synthetic/living-room/model.ply -t $i -o $out_file
+#		srun --x11 --mem=4G --gres=gpu:1 vglrun ~/workspace/metrics_eval/SurfReg/build/SurfReg -r $filename -m ~/datasets/iclnuim/living-room/model.ply -t $i -o $out_file
 #	done
 #done
 

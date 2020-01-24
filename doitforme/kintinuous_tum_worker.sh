@@ -1,5 +1,5 @@
 #!/bin/bash
-path="/imatge/icaminal/datasets/TUM_rgbd"
+path="/imatge/icaminal/datasets/tumrgbd"
 
 seq_a=("rgbd_dataset_freiburg1_desk" 
 	 "rgbd_dataset_freiburg1_room" 
@@ -29,13 +29,13 @@ for ((i=0;i<${#seq_a[@]};++i)); do
 		printf "\n${dot_a[j]} "
 
 		#Without loop closure
-		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/log.klg.5000 ${test_a[j]} -c ~/datasets/TUM_rgbd/calib_freiburg${cal_a[i]}.txt -f > $seq_dir/worker/out.${dot_a[j]}.txt 2> $seq_dir/worker/err.${dot_a[j]}.txt
+		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/log.klg.5000 ${test_a[j]} -c ~/datasets/tumrgbd/calib_freiburg${cal_a[i]}.txt -f > $seq_dir/worker/out.${dot_a[j]}.txt 2> $seq_dir/worker/err.${dot_a[j]}.txt
 		mv $seq_dir/log.klg.5000.poses $seq_dir/log.klg.5000.poses.${dot_a[j]}
 
 		printf "\n${dot_a[j]}.od "
 
 		#With loop closure
-		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/log.klg.5000 ${test_a[j]} -od -c ~/datasets/TUM_rgbd/calib_freiburg${cal_a[i]}.txt -f > $seq_dir/worker/out.${dot_a[j]}.od.txt 2> $seq_dir/worker/err.${dot_a[j]}.od.txt
+		srun --x11 --mem=16GB -c4 --gres=gpu:maxwell:1 vglrun ./Kintinuous -v ../../vocab.yml.gz -l $seq_dir/log.klg.5000 ${test_a[j]} -od -c ~/datasets/tumrgbd/calib_freiburg${cal_a[i]}.txt -f > $seq_dir/worker/out.${dot_a[j]}.od.txt 2> $seq_dir/worker/err.${dot_a[j]}.od.txt
 		mv $seq_dir/log.klg.5000.poses $seq_dir/log.klg.5000.poses.${dot_a[j]}.od
 
 	done

@@ -1,7 +1,7 @@
 #!/bin/bash
 kpfeat=gftt_brief_fix
 map_dir="/work/icaminal/reconstructions/icl"
-path="/imatge/icaminal/datasets/ICL-NUIM_synthetic/living-room"
+path="/imatge/icaminal/datasets/iclnuim/living-room"
 source ~/workspace/install/modules_rtabmap.sh
 
 dot_a=("f2m")
