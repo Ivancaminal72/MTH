@@ -1,10 +1,12 @@
-ElasticFusion/
-world3d-ros/
+#Dependencies not modified
 adapt/KITTI/_kitti-pcl/
+world3d-ros/
+ElasticFusion/
 
-
+#Ignore
+**/.git2/
 **/build/
-**/deps/
 **/bin/
 **/*.user
 **/*.pyc
+**/*.fuse*

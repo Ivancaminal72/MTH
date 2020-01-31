@@ -16,12 +16,10 @@ module load openni2/master \
 # download Kintinuous  (will create a "Kintinuous" folder)
 git clone --recursive https://github.com/Ivancaminal72/Kintinuous
 
-# download dependencies
+# download & build dependencies
 cd Kintinuous
 mkdir deps && cd deps/
 git clone https://github.com/stevenlovegrove/Pangolin.git
-
-# build dependencies
 cd Pangolin
 mkdir build && cd build
 cmake ..
