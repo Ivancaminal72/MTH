@@ -1,0 +1,3 @@
+[submodule "Kintinuous/deps/Pangolin"]
+	path = Kintinuous/deps/Pangolin
+	url = https://github.com/stevenlovegrove/Pangolin.git
