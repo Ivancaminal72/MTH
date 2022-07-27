@@ -1,2 +1,2 @@
 # MTH
-Master Thesis
+Adaptation of LIDAR data to SLAM strategies in the automotive field
